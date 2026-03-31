@@ -189,6 +189,70 @@
             tbody.appendChild(tr);
         });
     }
+    <!-- Añadir estos botones dentro del <div class="container"> antes de la tabla -->
+<div style="margin-bottom: 20px; display: flex; gap: 10px;">
+    <button onclick="guardarEnNube()" style="background-color: #059669;">☁️ Guardar en Nube</button>
+    <button onclick="cargarDeNube()" style="background-color: #7c3aed;">🔄 Cargar de Nube</button>
+</div>
+
+<script>
+    // PEGA AQUÍ LA URL QUE COPIASTE EN EL PASO 2
+    const WEB_APP_URL = "TU_URL_DE_GOOGLE_SCRIPT_AQUI";
+    const CONTRASENA_ADMIN = "Suki24";
+
+    let capitalTotal = 0;
+    let prestamos = [];
+
+    // Función para ENVIAR datos a Google Sheets
+    async function guardarEnNube() {
+        const btn = event.target;
+        btn.innerText = "Guardando...";
+        
+        const data = {
+            capital: capitalTotal,
+            prestamos: prestamos
+        };
+
+        try {
+            await fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors", // Necesario para Google Scripts
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            alert("Sincronizado con éxito en Google Sheets");
+        } catch (error) {
+            console.error(error);
+            alert("Error al sincronizar");
+        }
+        btn.innerText = "☁️ Guardar en Nube";
+    }
+
+    // Función para TRAER datos desde Google Sheets
+    async function cargarDeNube() {
+        const btn = event.target;
+        btn.innerText = "Cargando...";
+        
+        try {
+            const response = await fetch(WEB_APP_URL);
+            const data = await response.json();
+            
+            prestamos = data.prestamos;
+            capitalTotal = parseFloat(data.capital);
+            
+            document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
+            renderizarTabla();
+            alert("Datos cargados correctamente");
+        } catch (error) {
+            console.error(error);
+            alert("Error al cargar datos");
+        }
+        btn.innerText = "🔄 Cargar de Nube";
+    }
+
+    // ... (El resto de tus funciones: agregarPrestamo, eliminar, renderizarTabla, etc.)
+    // Asegúrate de borrar cualquier referencia a LocalStorage para evitar conflictos.
+</script>
 </script>
 
 </body>
