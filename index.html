@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Auto-Rellenado Pro</title>
+    <title>Prestamos CC - Auto-Rellenado Final</title>
     <style>
         :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 20px; color: #1e293b; }
@@ -13,9 +13,10 @@
         .capital-section input { background: transparent; color: #22c55e; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #f1f5f9; padding: 20px; border-radius: 8px; }
         input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 90%; transition: 0.3s; }
-        /* Efecto cuando encuentra un cliente */
-        .found { border: 2px solid var(--primary); background-color: #eff6ff; }
         
+        /* Estilo resaltado cuando encuentra al cliente */
+        .cliente-encontrado { border: 2px solid var(--success) !important; background-color: #f0fdf4 !important; }
+
         button { padding: 10px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-cloud { background-color: #059669; }
         .btn-update { background-color: #7c3aed; }
@@ -51,7 +52,7 @@
     </div>
 
     <div class="form-grid">
-        <input type="text" id="nombre" placeholder="Nombre del cliente" onkeyup="buscarCliente()">
+        <input type="text" id="nombre" placeholder="Escriba nombre..." onkeyup="autoRellenar()">
         <input type="text" id="celular" placeholder="Celular" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)">
         <input type="number" id="monto" placeholder="Monto $">
         <input type="number" id="porcentaje" placeholder="Interés %">
@@ -60,7 +61,7 @@
         <button onclick="agregarPrestamo()">Registrar</button>
     </div>
 
-    <table>
+    <table id="tablaGeneral">
         <thead>
             <tr>
                 <th>Cliente</th>
@@ -82,32 +83,31 @@
 
     window.onload = () => { cargarDeNube(true); };
 
-    // --- FUNCIÓN DE AUTO-RELLENADO MEJORADA ---
-    function buscarCliente() {
-        const inputNombre = document.getElementById('nombre');
-        const valorBusqueda = inputNombre.value.toLowerCase().trim();
-        const inputsParaRellenar = ['celular', 'monto', 'porcentaje', 'semanas'];
+    // --- FUNCIÓN DE AUTO-RELLENADO (VERSIÓN CORREGIDA) ---
+    function autoRellenar() {
+        const busqueda = document.getElementById('nombre').value.toLowerCase().trim();
+        const campos = ['celular', 'monto', 'porcentaje', 'semanas'];
 
-        if (valorBusqueda.length < 2) {
-            inputsParaRellenar.forEach(id => document.getElementById(id).classList.remove('found'));
-            inputNombre.classList.remove('found');
+        // Si no hay suficiente texto, limpiamos el color verde
+        if (busqueda.length < 2) {
+            campos.forEach(id => document.getElementById(id).classList.remove('cliente-encontrado'));
             return;
         }
 
-        // Buscar en la lista de préstamos (comparamos nombres en minúsculas)
-        const cliente = prestamos.find(p => p.nombre.toLowerCase() === valorBusqueda);
+        // Buscamos en la lista de préstamos actuales (la que está en la tabla)
+        const cliente = prestamos.find(p => p.nombre.toLowerCase().includes(busqueda));
 
         if (cliente) {
             document.getElementById('celular').value = cliente.celular || "";
+            // Usamos los valores guardados al momento del registro original
             document.getElementById('monto').value = cliente.montoOriginal || "";
             document.getElementById('porcentaje').value = cliente.porcentajeOriginal || 0;
             document.getElementById('semanas').value = cliente.numSemanasOriginales || "";
             
-            // Efecto visual de "Encontrado"
-            [inputNombre, ...inputsParaRellenar.map(id => document.getElementById(id))].forEach(el => el.classList.add('found'));
+            // Resaltamos en verde para avisar que se auto-rellenó
+            campos.forEach(id => document.getElementById(id).classList.add('cliente-encontrado'));
         } else {
-            inputsParaRellenar.forEach(id => document.getElementById(id).classList.remove('found'));
-            inputNombre.classList.remove('found');
+            campos.forEach(id => document.getElementById(id).classList.remove('cliente-encontrado'));
         }
     }
 
@@ -120,8 +120,8 @@
         const btn = event.target; btn.innerText = "⌛ Guardando...";
         try {
             await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
-            alert("✅ Guardado.");
-        } catch (e) { alert("❌ Error."); }
+            alert("✅ Guardado exitoso.");
+        } catch (e) { alert("❌ Error al guardar."); }
         btn.innerText = "☁️ Guardar Cambios";
     }
 
@@ -134,9 +134,9 @@
                 capitalTotal = parseFloat(data.capital) || 0;
                 document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
                 renderizarTabla();
-                if(!silencioso) alert("✅ Sincronizado.");
+                if(!silencioso) alert("✅ Datos actualizados.");
             }
-        } catch (e) { if(!silencioso) alert("❌ Error."); }
+        } catch (e) { if(!silencioso) alert("❌ Error al conectar."); }
     }
 
     function agregarPrestamo() {
@@ -147,7 +147,7 @@
         const sem = parseInt(document.getElementById('semanas').value);
         const fec = document.getElementById('fechaInicio').value;
 
-        if (!nom || isNaN(mon) || !fec || isNaN(sem)) { alert("Llene los campos."); return; }
+        if (!nom || isNaN(mon) || !fec || isNaN(sem)) { alert("Por favor complete los campos."); return; }
 
         const totalConInteres = mon + (mon * (por / 100));
         const cuotaBase = totalConInteres / sem;
@@ -158,6 +158,7 @@
             celular: cel,
             totalCobrar: totalConInteres,
             valorCuotaOriginal: cuotaBase,
+            // IMPORTANTE: Guardamos estos datos para que el auto-relleno funcione después
             montoOriginal: mon,
             porcentajeOriginal: por,
             numSemanasOriginales: sem,
@@ -170,11 +171,11 @@
         prestamos.push(nuevo);
         renderizarTabla();
         
-        // Limpiar y quitar color azul
+        // Limpiar
         ["nombre", "celular", "monto", "porcentaje", "semanas"].forEach(id => {
             const el = document.getElementById(id);
             el.value = "";
-            el.classList.remove('found');
+            el.classList.remove('cliente-encontrado');
         });
     }
 
@@ -199,7 +200,7 @@
     }
 
     function eliminar(pId) {
-        if (prompt("Contraseña:") === CONTRASENA_ADMIN) {
+        if (prompt("Contraseña de seguridad:") === CONTRASENA_ADMIN) {
             prestamos = prestamos.filter(x => x.id !== pId);
             renderizarTabla();
         }
@@ -224,7 +225,7 @@
             tr.innerHTML = `<td><strong>${p.nombre}</strong><br><small>📱 ${p.celular}</small></td>
                 <td><small>Cuota: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong>Total:$${p.totalCobrar.toFixed(2)}</strong></td>
                 <td>${circHtml}</td>
-                <td><button onclick="eliminar(${p.id})" style="background:none; color:red; border:none; cursor:pointer; font-size:11px;">Borrar</button></td>`;
+                <td><button onclick="eliminar(${p.id})" style="background:none; color:red; border:none; cursor:pointer; font-size:11px; text-decoration:underline;">Borrar</button></td>`;
             tbody.appendChild(tr);
         });
     }
