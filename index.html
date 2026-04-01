@@ -44,7 +44,6 @@
         </div>
     </div>
 
-    <!-- BOTONES DE SINCRONIZACIÓN -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
         <button onclick="guardarEnNube()" class="btn-cloud">☁️ Guardar Cambios</button>
         <button onclick="cargarDeNube()" class="btn-update">🔄 Actualizar Datos</button>
@@ -74,14 +73,12 @@
 </div>
 
 <script>
-    // URL de tu Apps Script configurada
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbygxcelqlUOJBIWQlBsdIQ29Dg-O857xEgGYhHk_NYzcikTefoSEp4VRGlhtVO245RodQ/exec"; 
     const CONTRASENA_ADMIN = "Suki24"; 
 
     let capitalTotal = 0;
     let prestamos = [];
 
-    // Carga automática al abrir la página
     window.onload = () => {
         cargarDeNube(true);
     };
@@ -90,8 +87,14 @@
         capitalTotal = parseFloat(document.getElementById('capitalGlobal').value) || 0;
     }
 
-    // Función para enviar datos al Excel de Google
     async function guardarEnNube() {
+        // --- AQUÍ SE AGREGA LA PREGUNTA DE SEGURIDAD ---
+        const confirmacion = confirm("¿Estás seguro de que quieres guardar los cambios en la nube? Esto reemplazará los datos anteriores.");
+        
+        if (!confirmacion) {
+            return; // Si el usuario da a "Cancelar", se detiene la función
+        }
+
         const btn = event.target;
         const originalText = btn.innerText;
         btn.innerText = "⌛ Guardando...";
@@ -101,7 +104,7 @@
         try {
             await fetch(WEB_APP_URL, {
                 method: "POST",
-                mode: "no-cors", // Para evitar problemas de seguridad con Google
+                mode: "no-cors",
                 body: JSON.stringify(data)
             });
             alert("✅ ¡Éxito! Los cambios se guardaron en la nube.");
@@ -111,7 +114,6 @@
         btn.innerText = originalText;
     }
 
-    // Función para traer datos desde el Excel de Google
     async function cargarDeNube(silencioso = false) {
         try {
             const response = await fetch(WEB_APP_URL);
