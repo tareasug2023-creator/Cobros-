@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Sincronizado</title>
+    <title>Prestamos CC - Auto-completado</title>
     <style>
         :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 20px; color: #1e293b; }
@@ -30,7 +30,6 @@
         .circle.add-week { border: 2px dashed var(--primary); color: var(--primary); font-weight: bold; font-size: 18px; }
         .circle.extra-fee { border-color: #f59e0b; color: #b45309; border-width: 3px; } 
         .date-label { font-size: 10px; color: #64748b; display: block; margin-top: 4px; font-weight: bold; }
-        .client-phone { font-size: 12px; color: #2563eb; text-decoration: none; display: block; margin-top: 3px; font-weight: 500; }
     </style>
 </head>
 <body>
@@ -50,7 +49,8 @@
     </div>
 
     <div class="form-grid">
-        <input type="text" id="nombre" placeholder="Nombre">
+        <!-- Evento oninput para buscar mientras escribes -->
+        <input type="text" id="nombre" placeholder="Nombre" oninput="buscarCliente()">
         <input type="text" id="celular" placeholder="Celular" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)">
         <input type="number" id="monto" placeholder="Monto $">
         <input type="number" id="porcentaje" placeholder="Interés %">
@@ -83,33 +83,42 @@
         cargarDeNube(true);
     };
 
+    // FUNCIÓN DE AUTO-RELLENADO
+    function buscarCliente() {
+        const nombreBusqueda = document.getElementById('nombre').value.toLowerCase().trim();
+        
+        if (nombreBusqueda.length < 3) return; // Empieza a buscar después de 3 letras
+
+        // Buscamos si el nombre ya existe en la lista de préstamos actual
+        const clienteEncontrado = prestamos.find(p => p.nombre.toLowerCase() === nombreBusqueda);
+
+        if (clienteEncontrado) {
+            document.getElementById('celular').value = clienteEncontrado.celular || "";
+            document.getElementById('monto').value = clienteEncontrado.montoOriginal || ""; 
+            // Nota: He guardado 'montoOriginal' en agregarPrestamo para que esto funcione siempre con el monto base
+            document.getElementById('porcentaje').value = clienteEncontrado.porcentajeOriginal || "";
+            document.getElementById('semanas').value = clienteEncontrado.numSemanasOriginales || "";
+        }
+    }
+
     function actualizarCapitalManual() {
         capitalTotal = parseFloat(document.getElementById('capitalGlobal').value) || 0;
     }
 
     async function guardarEnNube() {
-        // --- AQUÍ SE AGREGA LA PREGUNTA DE SEGURIDAD ---
-        const confirmacion = confirm("¿Estás seguro de que quieres guardar los cambios en la nube? Esto reemplazará los datos anteriores.");
-        
-        if (!confirmacion) {
-            return; // Si el usuario da a "Cancelar", se detiene la función
-        }
+        const confirmacion = confirm("¿Estás seguro de que quieres guardar los cambios en la nube?");
+        if (!confirmacion) return;
 
         const btn = event.target;
         const originalText = btn.innerText;
         btn.innerText = "⌛ Guardando...";
-        
         const data = { capital: capitalTotal, prestamos: prestamos };
 
         try {
-            await fetch(WEB_APP_URL, {
-                method: "POST",
-                mode: "no-cors",
-                body: JSON.stringify(data)
-            });
-            alert("✅ ¡Éxito! Los cambios se guardaron en la nube.");
+            await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(data) });
+            alert("✅ ¡Éxito! Cambios guardados.");
         } catch (e) {
-            alert("❌ Error al guardar. Revisa tu conexión.");
+            alert("❌ Error al guardar.");
         }
         btn.innerText = originalText;
     }
@@ -118,16 +127,15 @@
         try {
             const response = await fetch(WEB_APP_URL);
             const data = await response.json();
-            
             if (data) {
                 prestamos = data.prestamos || [];
                 capitalTotal = parseFloat(data.capital) || 0;
                 document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
                 renderizarTabla();
-                if(!silencioso) alert("✅ Datos sincronizados correctamente.");
+                if(!silencioso) alert("✅ Sincronizado.");
             }
         } catch (e) {
-            if(!silencioso) alert("❌ Error al cargar datos de la nube.");
+            if(!silencioso) alert("❌ Error al cargar.");
         }
     }
 
@@ -150,6 +158,10 @@
             celular: cel,
             totalCobrar: totalConInteres,
             valorCuotaOriginal: cuotaBase,
+            // Guardamos datos originales para el auto-rellenado futuro
+            montoOriginal: mon,
+            porcentajeOriginal: por,
+            numSemanasOriginales: sem,
             fechaInicio: fec,
             pagos: Array.from({length: sem}, () => ({ tipo: 'normal', estado: 0, valor: cuotaBase }))
         };
@@ -175,24 +187,20 @@
     }
 
     function agregarSemana(pId) {
-        const pass = prompt("Contraseña para Multa de Retraso ($5.00):");
+        const pass = prompt("Contraseña para Multa ($5.00):");
         if (pass === CONTRASENA_ADMIN) {
             const p = prestamos.find(x => x.id === pId);
             p.totalCobrar += 5;
             p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
             renderizarTabla();
-        } else if (pass !== null) {
-            alert("Contraseña incorrecta.");
         }
     }
 
     function eliminar(pId) {
-        const pass = prompt("Contraseña para eliminar registro:");
+        const pass = prompt("Contraseña para eliminar:");
         if (pass === CONTRASENA_ADMIN) {
             prestamos = prestamos.filter(x => x.id !== pId);
             renderizarTabla();
-        } else if (pass !== null) {
-            alert("Contraseña incorrecta.");
         }
     }
 
@@ -201,23 +209,21 @@
         tbody.innerHTML = "";
         prestamos.forEach(p => {
             const tr = document.createElement('tr');
-            let circulosHtml = '<div class="payment-scroll">';
+            let circHtml = '<div class="payment-scroll">';
             let fBase = new Date(p.fechaInicio + "T00:00:00");
-            
             p.pagos.forEach((pago, i) => {
                 fBase.setDate(fBase.getDate() + 7);
                 const d = fBase.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'});
                 let cl = pago.estado === 1 ? "checked" : (pago.estado === 2 ? "x-mark" : "");
                 let ex = pago.tipo === 'extra' ? 'extra-fee' : '';
-                circulosHtml += `<div class="circle-box"><div class="circle ${cl} ${ex}" onclick="togglePago(${p.id}, ${i})"></div><span class="date-label">${d}</span></div>`;
+                circHtml += `<div class="circle-box"><div class="circle ${cl} ${ex}" onclick="togglePago(${p.id}, ${i})"></div><span class="date-label">${d}</span></div>`;
             });
+            circHtml += `<div class="circle-box"><div class="circle add-week" onclick="agregarSemana(${p.id})">+</div><span class="date-label">Multa</span></div></div>`;
 
-            circulosHtml += `<div class="circle-box"><div class="circle add-week" onclick="agregarSemana(${p.id})">+</div><span class="date-label">Multa</span></div></div>`;
-
-            tr.innerHTML = `<td><strong>${p.nombre}</strong><br><a href="https://wa.me/593${p.celular}" target="_blank" class="client-phone">📱 ${p.celular}</a></td>
+            tr.innerHTML = `<td><strong>${p.nombre}</strong><br><a href="https://wa.me/593${p.celular}" target="_blank" style="text-decoration:none; font-size:12px;">📱 ${p.celular}</a></td>
                 <td><small>Cuota: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong>Total:$${p.totalCobrar.toFixed(2)}</strong></td>
-                <td>${circulosHtml}</td>
-                <td><button onclick="eliminar(${p.id})" style="background:none; color:red; border:none; cursor:pointer; text-decoration:underline; font-size:11px;">Borrar</button></td>`;
+                <td>${circHtml}</td>
+                <td><button onclick="eliminar(${p.id})" style="background:none; color:red; border:none; cursor:pointer; font-size:11px;">Borrar</button></td>`;
             tbody.appendChild(tr);
         });
     }
