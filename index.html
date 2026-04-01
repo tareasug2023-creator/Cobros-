@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Modo Dual</title>
+    <title>Prestamos CC - Capital Protegido</title>
     <style>
-        /* VARIABLES DE COLOR PARA AMBOS MODOS */
         :root { 
             --primary: #3b82f6; 
             --success: #22c55e; 
             --danger: #ef4444; 
             --warning: #f59e0b; 
-            
-            /* Modo Claro por defecto */
             --bg: #f8fafc; 
             --card-bg: #ffffff;
             --text-main: #1e293b;
@@ -22,7 +19,6 @@
             --header-bg: #1e293b;
         }
 
-        /* CLASE PARA MODO OSCURO */
         body.dark-mode { 
             --bg: #0f172a; 
             --card-bg: #1e293b;
@@ -48,7 +44,6 @@
             padding: 25px; 
             border-radius: 12px; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-            transition: background 0.3s;
         }
         
         .header-box { 
@@ -60,7 +55,6 @@
             margin-bottom: 20px; 
         }
 
-        /* BOTÓN DE MODO OSCURO */
         .theme-toggle {
             position: fixed;
             top: 20px;
@@ -72,7 +66,6 @@
             border-radius: 50px;
             cursor: pointer;
             font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             z-index: 1000;
         }
 
@@ -85,6 +78,7 @@
             border: 1px solid var(--primary);
         }
 
+        /* Estilo del input de capital bloqueado */
         .capital-section input { 
             background: transparent; 
             color: var(--success); 
@@ -94,8 +88,18 @@
             width: 120px; 
             text-align: center; 
             outline: none; 
+            cursor: default;
         }
-        
+
+        .btn-ajuste-cap {
+            display: block;
+            margin-top: 5px;
+            font-size: 10px;
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .stat-card { 
             background: var(--card-bg); 
@@ -160,7 +164,7 @@
         .circle.add-week { border: 2px dashed var(--primary); color: var(--primary); }
     </style>
 </head>
-<body>
+<body class="">
 
 <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙 Modo Oscuro</button>
 
@@ -169,7 +173,8 @@
         <h2 style="color: var(--primary)">💲 Prestamos CC</h2>
         <div class="capital-section">
             CAPITAL DISPONIBLE<br>
-            $ <input type="number" id="capitalGlobal" step="0.01" value="0.00" onchange="actualizarCapitalManual()">
+            $ <input type="number" id="capitalGlobal" step="0.01" value="0.00" readonly>
+            <span class="btn-ajuste-cap" onclick="ajustarCapitalConClave()">Ajustar Capital (Clave)</span>
         </div>
     </div>
 
@@ -220,12 +225,25 @@
     let prestamos = [];
     let editandoID = null;
 
-    // --- MANEJO DE TEMAS ---
+    // --- FUNCIÓN DE SEGURIDAD PARA CAPITAL ---
+    function ajustarCapitalConClave() {
+        const pass = prompt("Contraseña para modificar el capital:");
+        if (pass === CONTRASENA_ADMIN) {
+            const nuevoCap = prompt("Ingrese el nuevo monto del capital disponible:", capitalTotal.toFixed(2));
+            if (nuevoCap !== null && !isNaN(parseFloat(nuevoCap))) {
+                capitalTotal = parseFloat(nuevoCap);
+                document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
+                calcularGanancias(); // Refrescar vista
+            }
+        } else if (pass !== null) {
+            alert("❌ Contraseña incorrecta.");
+        }
+    }
+
     function toggleTheme() {
         const body = document.body;
         const btn = document.getElementById('themeBtn');
         body.classList.toggle('dark-mode');
-        
         if (body.classList.contains('dark-mode')) {
             btn.innerText = "☀️ Modo Claro";
             localStorage.setItem('theme', 'dark');
@@ -235,7 +253,6 @@
         }
     }
 
-    // Al cargar la página
     window.onload = () => {
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
@@ -244,7 +261,6 @@
         cargarDeNube(true); 
     };
 
-    // --- LÓGICA DE NEGOCIO ---
     function calcularGanancias() {
         let total = 0; let mes = 0;
         const ahora = new Date();
@@ -424,11 +440,6 @@
                 <button onclick="eliminar(${p.id})" style="background:none; color:var(--danger); text-decoration:underline; font-size:11px; border:none; cursor:pointer;">Borrar</button></td>`;
             tbody.appendChild(tr);
         });
-    }
-
-    function actualizarCapitalManual() {
-        capitalTotal = parseFloat(document.getElementById('capitalGlobal').value) || 0;
-        calcularGanancias();
     }
 </script>
 </body>
