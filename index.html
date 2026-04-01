@@ -3,25 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Control de Ganancias</title>
+    <title>Prestamos CC - WhatsApp Activo</title>
     <style>
         :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; --bg: #f8fafc; --dark: #1e293b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 20px; color: #1e293b; }
         .container { max-width: 1300px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         
-        /* Encabezado y Capital */
         .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 20px; }
         .capital-section { background: var(--dark); color: white; padding: 15px; border-radius: 8px; text-align: center; }
         .capital-section input { background: transparent; color: var(--success); border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
         
-        /* Panel de Ganancias */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .stat-card { background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary); }
         .stat-card h4 { margin: 0; font-size: 12px; color: #64748b; text-transform: uppercase; }
         .stat-card p { margin: 5px 0 0; font-size: 20px; font-weight: bold; color: var(--dark); }
         .stat-card.total-gain { border-left-color: var(--success); background: #f0fdf4; }
 
-        /* Formulario */
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #f1f5f9; padding: 20px; border-radius: 8px; border: 2px solid transparent; transition: 0.3s; }
         .form-editing { border-color: var(--warning); background: #fffbeb; }
         input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 90%; }
@@ -32,7 +29,9 @@
         .btn-edit { background: none; color: var(--warning); border: none; cursor: pointer; text-decoration: underline; font-size: 11px; margin-right: 5px; }
         .btn-delete { background: none; color: var(--danger); border: none; cursor: pointer; text-decoration: underline; font-size: 11px; }
 
-        /* Tabla y Pagos */
+        .client-whatsapp { color: #2563eb; text-decoration: none; font-weight: 500; font-size: 12px; display: inline-block; margin-top: 2px; }
+        .client-whatsapp:hover { text-decoration: underline; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th { background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }
         td { padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
@@ -58,7 +57,7 @@
 
     <div class="stats-grid" id="panelGanancias">
         <div class="stat-card total-gain">
-            <h4>Ganancia Total (Interés + Multas)</h4>
+            <h4>Ganancia Total</h4>
             <p id="gananciaTotal">$ 0.00</p>
         </div>
         <div class="stat-card">
@@ -105,7 +104,6 @@
 
     window.onload = () => { cargarDeNube(true); };
 
-    // --- CÁLCULO DE GANANCIAS ---
     function calcularGanancias() {
         let totalInteresMultas = 0;
         let interesMesActual = 0;
@@ -114,31 +112,21 @@
         const anioActual = ahora.getFullYear();
 
         prestamos.forEach(p => {
-            // La ganancia de cada cuota es: ValorCuota - (MontoOriginal / SemanasOriginales)
-            // Pero como tú quieres Interés + Multas, calculamos la ganancia por cuota pagada
             const gananciaPorCuota = p.valorCuotaOriginal - (p.montoOriginal / p.numSemanasOriginales);
-            
             let fBase = new Date(p.fechaInicio + "T00:00:00");
-
             p.pagos.forEach(pago => {
                 fBase.setDate(fBase.getDate() + 7);
-                
-                if (pago.estado === 1) { // Si está pagado (Verde)
+                if (pago.estado === 1) {
                     let gananciaDeEstePago = (pago.tipo === 'extra') ? 5 : gananciaPorCuota;
                     totalInteresMultas += gananciaDeEstePago;
-
-                    if (fBase.getMonth() === mesActual && fBase.getFullYear() === anioActual) {
-                        interesMesActual += gananciaDeEstePago;
-                    }
+                    if (fBase.getMonth() === mesActual && fBase.getFullYear() === anioActual) interesMesActual += gananciaDeEstePago;
                 }
             });
         });
-
         document.getElementById('gananciaTotal').innerText = `$ ${totalInteresMultas.toFixed(2)}`;
         document.getElementById('gananciaMes').innerText = `$ ${interesMesActual.toFixed(2)}`;
     }
 
-    // --- FUNCIONES DE NUBE ---
     async function guardarEnNube() {
         if (!confirm("¿Guardar cambios en la nube?")) return;
         try {
@@ -161,7 +149,6 @@
         } catch (e) { if(!silencioso) alert("❌ Error."); }
     }
 
-    // --- GESTIÓN DE PRÉSTAMOS ---
     function procesarPrestamo() {
         if (editandoID) finalizarEdicion();
         else agregarPrestamo();
@@ -174,25 +161,15 @@
         const por = parseFloat(document.getElementById('porcentaje').value) || 0;
         const sem = parseInt(document.getElementById('semanas').value);
         const fec = document.getElementById('fechaInicio').value;
-
         if (!nom || isNaN(mon) || !fec || isNaN(sem)) { alert("Llene los campos."); return; }
-
         const totalConInteres = mon + (mon * (por / 100));
         const cuotaBase = totalConInteres / sem;
-
         const nuevo = {
-            id: Date.now(),
-            nombre: nom,
-            celular: cel,
-            totalCobrar: totalConInteres,
-            valorCuotaOriginal: cuotaBase,
-            montoOriginal: mon,
-            porcentajeOriginal: por,
-            numSemanasOriginales: sem,
-            fechaInicio: fec,
+            id: Date.now(), nombre: nom, celular: cel, totalCobrar: totalConInteres,
+            valorCuotaOriginal: cuotaBase, montoOriginal: mon, porcentajeOriginal: por,
+            numSemanasOriginales: sem, fechaInicio: fec,
             pagos: Array.from({length: sem}, () => ({ tipo: 'normal', estado: 0, valor: cuotaBase }))
         };
-
         capitalTotal -= mon;
         prestamos.push(nuevo);
         actualizarUI();
@@ -228,34 +205,24 @@
         const monNuevo = parseFloat(document.getElementById('monto').value);
         const porNuevo = parseFloat(document.getElementById('porcentaje').value) || 0;
         const semNuevas = parseInt(document.getElementById('semanas').value);
-
         capitalTotal += (p.montoOriginal - monNuevo);
         p.nombre = document.getElementById('nombre').value;
         p.celular = document.getElementById('celular').value;
-        p.montoOriginal = monNuevo;
-        p.porcentajeOriginal = porNuevo;
-        p.numSemanasOriginales = semNuevas;
-        p.fechaInicio = document.getElementById('fechaInicio').value;
-        
+        p.montoOriginal = monNuevo; p.porcentajeOriginal = porNuevo;
+        p.numSemanasOriginales = semNuevas; p.fechaInicio = document.getElementById('fechaInicio').value;
         const nuevoTotal = monNuevo + (monNuevo * (porNuevo / 100));
-        p.totalCobrar = nuevoTotal;
-        p.valorCuotaOriginal = nuevoTotal / semNuevas;
-
-        if (p.pagos.length !== semNuevas) {
-            p.pagos = Array.from({length: semNuevas}, () => ({ tipo: 'normal', estado: 0, valor: p.valorCuotaOriginal }));
-        }
-
+        p.totalCobrar = nuevoTotal; p.valorCuotaOriginal = nuevoTotal / semNuevas;
+        if (p.pagos.length !== semNuevas) p.pagos = Array.from({length: semNuevas}, () => ({ tipo: 'normal', estado: 0, valor: p.valorCuotaOriginal }));
         editandoID = null;
         document.getElementById('mainForm').classList.remove('form-editing');
         document.getElementById('btnRegistrar').innerText = "Registrar";
         actualizarUI();
     }
 
-    // --- INTERFAZ ---
     function actualizarUI() {
         document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
         renderizarTabla();
-        calcularGanancias(); // Recalcular ganancias cada vez que algo cambia
+        calcularGanancias();
         ["nombre", "celular", "monto", "porcentaje", "semanas", "fechaInicio"].forEach(id => document.getElementById(id).value = "");
     }
 
@@ -307,7 +274,11 @@
             });
             circHtml += `<div class="circle-box"><div class="circle add-week" onclick="agregarSemana(${p.id})">+</div><span class="date-label">Multa</span></div></div>`;
 
-            tr.innerHTML = `<td><strong>${p.nombre}</strong><br><small>📱 ${p.celular}</small></td>
+            // AQUÍ ESTÁ LA CORRECCIÓN DEL WHATSAPP
+            tr.innerHTML = `<td>
+                    <strong>${p.nombre}</strong><br>
+                    <a href="https://wa.me/593${p.celular}" target="_blank" class="client-whatsapp">📱 ${p.celular}</a>
+                </td>
                 <td><small>Cuota: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong>Total:$${p.totalCobrar.toFixed(2)}</strong></td>
                 <td>${circHtml}</td>
                 <td>
