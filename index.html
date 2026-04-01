@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - WhatsApp Activo</title>
+    <title>Prestamos CC - Orden Cronológico</title>
     <style>
         :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; --bg: #f8fafc; --dark: #1e293b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 20px; color: #1e293b; }
@@ -30,7 +30,8 @@
         .btn-delete { background: none; color: var(--danger); border: none; cursor: pointer; text-decoration: underline; font-size: 11px; }
 
         .client-whatsapp { color: #2563eb; text-decoration: none; font-weight: 500; font-size: 12px; display: inline-block; margin-top: 2px; }
-        .client-whatsapp:hover { text-decoration: underline; }
+
+        .month-divider { background: #e2e8f0; color: #475569; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-align: center; padding: 8px !important; border-left: 10px solid var(--primary); }
 
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th { background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }
@@ -128,7 +129,7 @@
     }
 
     async function guardarEnNube() {
-        if (!confirm("¿Guardar cambios en la nube?")) return;
+        if (!confirm("¿Estás seguro de que quieres guardar los cambios en la nube?")) return;
         try {
             await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
             alert("✅ Guardado.");
@@ -142,9 +143,8 @@
             if (data) {
                 prestamos = data.prestamos || [];
                 capitalTotal = parseFloat(data.capital) || 0;
-                document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
                 actualizarUI();
-                if(!silencioso) alert("✅ Actualizado.");
+                if(!silencioso) alert("✅ Sincronizado.");
             }
         } catch (e) { if(!silencioso) alert("❌ Error."); }
     }
@@ -221,6 +221,8 @@
 
     function actualizarUI() {
         document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
+        // ORDENADO AUTOMÁTICO: Antes de renderizar, ordenamos por fecha
+        prestamos.sort((a, b) => new Date(a.fechaInicio + "T00:00:00") - new Date(b.fechaInicio + "T00:00:00"));
         renderizarTabla();
         calcularGanancias();
         ["nombre", "celular", "monto", "porcentaje", "semanas", "fechaInicio"].forEach(id => document.getElementById(id).value = "");
@@ -261,7 +263,20 @@
     function renderizarTabla() {
         const tbody = document.getElementById('cuerpoTabla');
         tbody.innerHTML = "";
+        
+        let ultimoMesMostrado = "";
+
         prestamos.forEach(p => {
+            const fechaObj = new Date(p.fechaInicio + "T00:00:00");
+            const nombreMes = fechaObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
+            if (nombreMes !== ultimoMesMostrado) {
+                const trMes = document.createElement('tr');
+                trMes.innerHTML = `<td colspan="4" class="month-divider">${nombreMes}</td>`;
+                tbody.appendChild(trMes);
+                ultimoMesMostrado = nombreMes;
+            }
+
             const tr = document.createElement('tr');
             let circHtml = '<div class="payment-scroll">';
             let fBase = new Date(p.fechaInicio + "T00:00:00");
@@ -274,7 +289,6 @@
             });
             circHtml += `<div class="circle-box"><div class="circle add-week" onclick="agregarSemana(${p.id})">+</div><span class="date-label">Multa</span></div></div>`;
 
-            // AQUÍ ESTÁ LA CORRECCIÓN DEL WHATSAPP
             tr.innerHTML = `<td>
                     <strong>${p.nombre}</strong><br>
                     <a href="https://wa.me/593${p.celular}" target="_blank" class="client-whatsapp">📱 ${p.celular}</a>
