@@ -3,60 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Orden Cronológico</title>
+    <title>Prestamos CC - Modo Dual</title>
     <style>
-        :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; --bg: #f8fafc; --dark: #1e293b; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 20px; color: #1e293b; }
-        .container { max-width: 1300px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        /* VARIABLES DE COLOR PARA AMBOS MODOS */
+        :root { 
+            --primary: #3b82f6; 
+            --success: #22c55e; 
+            --danger: #ef4444; 
+            --warning: #f59e0b; 
+            
+            /* Modo Claro por defecto */
+            --bg: #f8fafc; 
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-dim: #64748b;
+            --input-bg: #ffffff;
+            --border: #e2e8f0;
+            --header-bg: #1e293b;
+        }
+
+        /* CLASE PARA MODO OSCURO */
+        body.dark-mode { 
+            --bg: #0f172a; 
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --input-bg: #0f172a;
+            --border: #334155;
+            --header-bg: #0f172a;
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: var(--bg); 
+            margin: 20px; 
+            color: var(--text-main); 
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .container { 
+            max-width: 1300px; 
+            margin: auto; 
+            background: var(--card-bg); 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            transition: background 0.3s;
+        }
         
-        .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 20px; }
-        .capital-section { background: var(--dark); color: white; padding: 15px; border-radius: 8px; text-align: center; }
-        .capital-section input { background: transparent; color: var(--success); border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
+        .header-box { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid var(--border); 
+            padding-bottom: 20px; 
+            margin-bottom: 20px; 
+        }
+
+        /* BOTÓN DE MODO OSCURO */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+
+        .capital-section { 
+            background: var(--header-bg); 
+            color: white; 
+            padding: 15px; 
+            border-radius: 8px; 
+            text-align: center; 
+            border: 1px solid var(--primary);
+        }
+
+        .capital-section input { 
+            background: transparent; 
+            color: var(--success); 
+            border: none; 
+            font-size: 1.2em; 
+            font-weight: bold; 
+            width: 120px; 
+            text-align: center; 
+            outline: none; 
+        }
         
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary); }
-        .stat-card h4 { margin: 0; font-size: 12px; color: #64748b; text-transform: uppercase; }
-        .stat-card p { margin: 5px 0 0; font-size: 20px; font-weight: bold; color: var(--dark); }
-        .stat-card.total-gain { border-left-color: var(--success); background: #f0fdf4; }
+        .stat-card { 
+            background: var(--card-bg); 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 1px solid var(--border);
+            border-left: 5px solid var(--primary);
+        }
+        .stat-card.total-gain { border-left-color: var(--success); }
 
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #f1f5f9; padding: 20px; border-radius: 8px; border: 2px solid transparent; transition: 0.3s; }
-        .form-editing { border-color: var(--warning); background: #fffbeb; }
-        input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 90%; }
+        .form-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); 
+            gap: 10px; 
+            margin-bottom: 20px; 
+            background: var(--bg); 
+            padding: 20px; 
+            border-radius: 8px; 
+            border: 1px solid var(--border);
+        }
+
+        input { 
+            padding: 10px; 
+            background: var(--input-bg);
+            border: 1px solid var(--border); 
+            border-radius: 6px; 
+            font-size: 14px; 
+            color: var(--text-main);
+            width: 90%; 
+        }
+
         button { padding: 10px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        
         .btn-cloud { background-color: #059669; }
         .btn-update-nube { background-color: #7c3aed; }
-        .btn-edit { background: none; color: var(--warning); border: none; cursor: pointer; text-decoration: underline; font-size: 11px; margin-right: 5px; }
-        .btn-delete { background: none; color: var(--danger); border: none; cursor: pointer; text-decoration: underline; font-size: 11px; }
-
-        .client-whatsapp { color: #2563eb; text-decoration: none; font-weight: 500; font-size: 12px; display: inline-block; margin-top: 2px; }
-
-        .month-divider { background: #e2e8f0; color: #475569; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-align: center; padding: 8px !important; border-left: 10px solid var(--primary); }
+        
+        .month-divider { 
+            background: var(--border); 
+            color: var(--text-dim); 
+            font-weight: bold; 
+            font-size: 11px; 
+            text-transform: uppercase; 
+            text-align: center; 
+            padding: 8px !important; 
+        }
 
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }
-        td { padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-        .payment-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; max-width: 600px; scrollbar-width: thin; }
-        .circle-box { min-width: 55px; text-align: center; }
-        .circle { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: auto; background: white; }
+        th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: var(--text-dim); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        
+        .payment-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; max-width: 600px; }
+        .circle { 
+            width: 32px; height: 32px; 
+            border-radius: 50%; 
+            border: 2px solid var(--border); 
+            display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; margin: auto; 
+            background: var(--bg); 
+            color: var(--text-dim);
+        }
         .circle.checked { background: var(--success); border-color: var(--success); color: white; }
         .circle.x-mark { background: var(--danger); border-color: var(--danger); color: white; }
-        .circle.extra-fee { border-color: #f59e0b; color: #b45309; border-width: 3px; } 
-        .date-label { font-size: 10px; color: #64748b; display: block; margin-top: 4px; font-weight: bold; }
+        .circle.add-week { border: 2px dashed var(--primary); color: var(--primary); }
     </style>
 </head>
 <body>
 
+<button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙 Modo Oscuro</button>
+
 <div class="container">
     <div class="header-box">
-        <h2>💲 Prestamos CC</h2>
+        <h2 style="color: var(--primary)">💲 Prestamos CC</h2>
         <div class="capital-section">
             CAPITAL DISPONIBLE<br>
             $ <input type="number" id="capitalGlobal" step="0.01" value="0.00" onchange="actualizarCapitalManual()">
         </div>
     </div>
 
-    <div class="stats-grid" id="panelGanancias">
+    <div class="stats-grid">
         <div class="stat-card total-gain">
             <h4>Ganancia Total</h4>
             <p id="gananciaTotal">$ 0.00</p>
@@ -103,33 +220,52 @@
     let prestamos = [];
     let editandoID = null;
 
-    window.onload = () => { cargarDeNube(true); };
+    // --- MANEJO DE TEMAS ---
+    function toggleTheme() {
+        const body = document.body;
+        const btn = document.getElementById('themeBtn');
+        body.classList.toggle('dark-mode');
+        
+        if (body.classList.contains('dark-mode')) {
+            btn.innerText = "☀️ Modo Claro";
+            localStorage.setItem('theme', 'dark');
+        } else {
+            btn.innerText = "🌙 Modo Oscuro";
+            localStorage.setItem('theme', 'light');
+        }
+    }
 
+    // Al cargar la página
+    window.onload = () => {
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            document.getElementById('themeBtn').innerText = "☀️ Modo Claro";
+        }
+        cargarDeNube(true); 
+    };
+
+    // --- LÓGICA DE NEGOCIO ---
     function calcularGanancias() {
-        let totalInteresMultas = 0;
-        let interesMesActual = 0;
+        let total = 0; let mes = 0;
         const ahora = new Date();
-        const mesActual = ahora.getMonth();
-        const anioActual = ahora.getFullYear();
-
         prestamos.forEach(p => {
             const gananciaPorCuota = p.valorCuotaOriginal - (p.montoOriginal / p.numSemanasOriginales);
             let fBase = new Date(p.fechaInicio + "T00:00:00");
             p.pagos.forEach(pago => {
                 fBase.setDate(fBase.getDate() + 7);
                 if (pago.estado === 1) {
-                    let gananciaDeEstePago = (pago.tipo === 'extra') ? 5 : gananciaPorCuota;
-                    totalInteresMultas += gananciaDeEstePago;
-                    if (fBase.getMonth() === mesActual && fBase.getFullYear() === anioActual) interesMesActual += gananciaDeEstePago;
+                    let g = (pago.tipo === 'extra') ? 5 : gananciaPorCuota;
+                    total += g;
+                    if (fBase.getMonth() === ahora.getMonth() && fBase.getFullYear() === ahora.getFullYear()) mes += g;
                 }
             });
         });
-        document.getElementById('gananciaTotal').innerText = `$ ${totalInteresMultas.toFixed(2)}`;
-        document.getElementById('gananciaMes').innerText = `$ ${interesMesActual.toFixed(2)}`;
+        document.getElementById('gananciaTotal').innerText = `$ ${total.toFixed(2)}`;
+        document.getElementById('gananciaMes').innerText = `$ ${mes.toFixed(2)}`;
     }
 
     async function guardarEnNube() {
-        if (!confirm("¿Estás seguro de que quieres guardar los cambios en la nube?")) return;
+        if (!confirm("¿Guardar cambios en la nube?")) return;
         try {
             await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
             alert("✅ Guardado.");
@@ -162,16 +298,48 @@
         const sem = parseInt(document.getElementById('semanas').value);
         const fec = document.getElementById('fechaInicio').value;
         if (!nom || isNaN(mon) || !fec || isNaN(sem)) { alert("Llene los campos."); return; }
-        const totalConInteres = mon + (mon * (por / 100));
-        const cuotaBase = totalConInteres / sem;
-        const nuevo = {
-            id: Date.now(), nombre: nom, celular: cel, totalCobrar: totalConInteres,
-            valorCuotaOriginal: cuotaBase, montoOriginal: mon, porcentajeOriginal: por,
+        const cuota = (mon + (mon * (por / 100))) / sem;
+        prestamos.push({
+            id: Date.now(), nombre: nom, celular: cel, totalCobrar: mon + (mon * (por / 100)),
+            valorCuotaOriginal: cuota, montoOriginal: mon, porcentajeOriginal: por,
             numSemanasOriginales: sem, fechaInicio: fec,
-            pagos: Array.from({length: sem}, () => ({ tipo: 'normal', estado: 0, valor: cuotaBase }))
-        };
+            pagos: Array.from({length: sem}, () => ({ tipo: 'normal', estado: 0, valor: cuota }))
+        });
         capitalTotal -= mon;
-        prestamos.push(nuevo);
+        actualizarUI();
+    }
+
+    function prepararEdicion(id) {
+        if (prompt("Contraseña:") !== CONTRASENA_ADMIN) return;
+        const p = prestamos.find(x => x.id === id);
+        editandoID = id;
+        document.getElementById('nombre').value = p.nombre;
+        document.getElementById('celular').value = p.celular;
+        document.getElementById('monto').value = p.montoOriginal;
+        document.getElementById('porcentaje').value = p.porcentajeOriginal;
+        document.getElementById('semanas').value = p.numSemanasOriginales;
+        document.getElementById('fechaInicio').value = p.fechaInicio;
+        document.getElementById('mainForm').style.borderColor = "var(--warning)";
+        document.getElementById('btnRegistrar').innerText = "Actualizar";
+        window.scrollTo(0, 0);
+    }
+
+    function finalizarEdicion() {
+        const p = prestamos.find(x => x.id === editandoID);
+        const monNuevo = parseFloat(document.getElementById('monto').value);
+        capitalTotal += (p.montoOriginal - monNuevo);
+        p.nombre = document.getElementById('nombre').value;
+        p.celular = document.getElementById('celular').value;
+        p.montoOriginal = monNuevo;
+        p.porcentajeOriginal = parseFloat(document.getElementById('porcentaje').value);
+        p.numSemanasOriginales = parseInt(document.getElementById('semanas').value);
+        p.fechaInicio = document.getElementById('fechaInicio').value;
+        const nuevoT = p.montoOriginal + (p.montoOriginal * (p.porcentajeOriginal/100));
+        p.valorCuotaOriginal = nuevoT / p.numSemanasOriginales;
+        if (p.pagos.length !== p.numSemanasOriginales) p.pagos = Array.from({length: p.numSemanasOriginales}, () => ({ tipo: 'normal', estado: 0, valor: p.valorCuotaOriginal }));
+        editandoID = null;
+        document.getElementById('mainForm').style.borderColor = "var(--border)";
+        document.getElementById('btnRegistrar').innerText = "Registrar";
         actualizarUI();
     }
 
@@ -185,43 +353,8 @@
         }
     }
 
-    function prepararEdicion(id) {
-        if (prompt("Contraseña:") !== CONTRASENA_ADMIN) return;
-        const p = prestamos.find(x => x.id === id);
-        editandoID = id;
-        document.getElementById('nombre').value = p.nombre;
-        document.getElementById('celular').value = p.celular;
-        document.getElementById('monto').value = p.montoOriginal;
-        document.getElementById('porcentaje').value = p.porcentajeOriginal;
-        document.getElementById('semanas').value = p.numSemanasOriginales;
-        document.getElementById('fechaInicio').value = p.fechaInicio;
-        document.getElementById('mainForm').classList.add('form-editing');
-        document.getElementById('btnRegistrar').innerText = "Actualizar Registro";
-        window.scrollTo(0, 0);
-    }
-
-    function finalizarEdicion() {
-        const p = prestamos.find(x => x.id === editandoID);
-        const monNuevo = parseFloat(document.getElementById('monto').value);
-        const porNuevo = parseFloat(document.getElementById('porcentaje').value) || 0;
-        const semNuevas = parseInt(document.getElementById('semanas').value);
-        capitalTotal += (p.montoOriginal - monNuevo);
-        p.nombre = document.getElementById('nombre').value;
-        p.celular = document.getElementById('celular').value;
-        p.montoOriginal = monNuevo; p.porcentajeOriginal = porNuevo;
-        p.numSemanasOriginales = semNuevas; p.fechaInicio = document.getElementById('fechaInicio').value;
-        const nuevoTotal = monNuevo + (monNuevo * (porNuevo / 100));
-        p.totalCobrar = nuevoTotal; p.valorCuotaOriginal = nuevoTotal / semNuevas;
-        if (p.pagos.length !== semNuevas) p.pagos = Array.from({length: semNuevas}, () => ({ tipo: 'normal', estado: 0, valor: p.valorCuotaOriginal }));
-        editandoID = null;
-        document.getElementById('mainForm').classList.remove('form-editing');
-        document.getElementById('btnRegistrar').innerText = "Registrar";
-        actualizarUI();
-    }
-
     function actualizarUI() {
         document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
-        // ORDENADO AUTOMÁTICO: Antes de renderizar, ordenamos por fecha
         prestamos.sort((a, b) => new Date(a.fechaInicio + "T00:00:00") - new Date(b.fechaInicio + "T00:00:00"));
         renderizarTabla();
         calcularGanancias();
@@ -244,10 +377,10 @@
         if (bus.length < 2) return;
         const c = prestamos.find(p => p.nombre.toLowerCase().includes(bus));
         if (c) {
-            document.getElementById('celular').value = c.celular || "";
-            document.getElementById('monto').value = c.montoOriginal || "";
-            document.getElementById('porcentaje').value = c.porcentajeOriginal || 0;
-            document.getElementById('semanas').value = c.numSemanasOriginales || "";
+            document.getElementById('celular').value = c.celular;
+            document.getElementById('monto').value = c.montoOriginal;
+            document.getElementById('porcentaje').value = c.porcentajeOriginal;
+            document.getElementById('semanas').value = c.numSemanasOriginales;
         }
     }
 
@@ -263,42 +396,32 @@
     function renderizarTabla() {
         const tbody = document.getElementById('cuerpoTabla');
         tbody.innerHTML = "";
-        
-        let ultimoMesMostrado = "";
-
+        let ultimoMes = "";
         prestamos.forEach(p => {
-            const fechaObj = new Date(p.fechaInicio + "T00:00:00");
-            const nombreMes = fechaObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-
-            if (nombreMes !== ultimoMesMostrado) {
+            const fObj = new Date(p.fechaInicio + "T00:00:00");
+            const mesStr = fObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            if (mesStr !== ultimoMes) {
                 const trMes = document.createElement('tr');
-                trMes.innerHTML = `<td colspan="4" class="month-divider">${nombreMes}</td>`;
+                trMes.innerHTML = `<td colspan="4" class="month-divider">${mesStr}</td>`;
                 tbody.appendChild(trMes);
-                ultimoMesMostrado = nombreMes;
+                ultimoMes = mesStr;
             }
-
             const tr = document.createElement('tr');
-            let circHtml = '<div class="payment-scroll">';
-            let fBase = new Date(p.fechaInicio + "T00:00:00");
+            let circs = '<div class="payment-scroll">';
+            let fP = new Date(p.fechaInicio + "T00:00:00");
             p.pagos.forEach((pago, i) => {
-                fBase.setDate(fBase.getDate() + 7);
-                const d = fBase.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'});
+                fP.setDate(fP.getDate() + 7);
+                const d = fP.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'});
                 let cl = pago.estado === 1 ? "checked" : (pago.estado === 2 ? "x-mark" : "");
-                let ex = pago.tipo === 'extra' ? 'extra-fee' : '';
-                circHtml += `<div class="circle-box"><div class="circle ${cl} ${ex}" onclick="togglePago(${p.id}, ${i})"></div><span class="date-label">${d}</span></div>`;
+                circs += `<div class="circle-box"><div class="circle ${cl} ${pago.tipo==='extra'?'extra-fee':''}" onclick="togglePago(${p.id}, ${i})"></div><span class="date-label">${d}</span></div>`;
             });
-            circHtml += `<div class="circle-box"><div class="circle add-week" onclick="agregarSemana(${p.id})">+</div><span class="date-label">Multa</span></div></div>`;
+            circs += `<div class="circle add-week" onclick="agregarSemana(${p.id})">+</div></div>`;
 
-            tr.innerHTML = `<td>
-                    <strong>${p.nombre}</strong><br>
-                    <a href="https://wa.me/593${p.celular}" target="_blank" class="client-whatsapp">📱 ${p.celular}</a>
-                </td>
+            tr.innerHTML = `<td><strong>${p.nombre}</strong><br><a href="https://wa.me/593${p.celular}" target="_blank" style="color:var(--primary); font-size:12px; text-decoration:none;">📱 WhatsApp</a></td>
                 <td><small>Cuota: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong>Total:$${p.totalCobrar.toFixed(2)}</strong></td>
-                <td>${circHtml}</td>
-                <td>
-                    <button onclick="prepararEdicion(${p.id})" class="btn-edit">Editar</button>
-                    <button onclick="eliminar(${p.id})" class="btn-delete">Borrar</button>
-                </td>`;
+                <td>${circs}</td>
+                <td><button onclick="prepararEdicion(${p.id})" style="background:none; color:var(--warning); text-decoration:underline; font-size:11px; border:none; cursor:pointer;">Editar</button>
+                <button onclick="eliminar(${p.id})" style="background:none; color:var(--danger); text-decoration:underline; font-size:11px; border:none; cursor:pointer;">Borrar</button></td>`;
             tbody.appendChild(tr);
         });
     }
@@ -308,6 +431,5 @@
         calcularGanancias();
     }
 </script>
-
 </body>
 </html>
