@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Auto-completado</title>
+    <title>Prestamos CC - Auto-Rellenado Pro</title>
     <style>
         :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 20px; color: #1e293b; }
@@ -12,22 +12,24 @@
         .capital-section { background: #1e293b; color: white; padding: 15px; border-radius: 8px; text-align: center; }
         .capital-section input { background: transparent; color: #22c55e; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #f1f5f9; padding: 20px; border-radius: 8px; }
-        input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 90%; }
-        button { padding: 10px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        button:hover { opacity: 0.8; }
+        input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 90%; transition: 0.3s; }
+        /* Efecto cuando encuentra un cliente */
+        .found { border: 2px solid var(--primary); background-color: #eff6ff; }
+        
+        button { padding: 10px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-cloud { background-color: #059669; }
         .btn-update { background-color: #7c3aed; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th { background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }
         td { padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-        .payment-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; max-width: 600px; scrollbar-width: thin; align-items: center; }
+        .payment-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; max-width: 600px; scrollbar-width: thin; }
         .circle-box { min-width: 55px; text-align: center; }
-        .circle { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: auto; transition: 0.2s; font-size: 14px; background: white; user-select: none; }
+        .circle { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: auto; background: white; }
         .circle.checked { background: var(--success); border-color: var(--success); color: white; }
         .circle.checked::after { content: '✓'; }
         .circle.x-mark { background: var(--danger); border-color: var(--danger); color: white; }
         .circle.x-mark::after { content: '✕'; }
-        .circle.add-week { border: 2px dashed var(--primary); color: var(--primary); font-weight: bold; font-size: 18px; }
+        .circle.add-week { border: 2px dashed var(--primary); color: var(--primary); font-weight: bold; }
         .circle.extra-fee { border-color: #f59e0b; color: #b45309; border-width: 3px; } 
         .date-label { font-size: 10px; color: #64748b; display: block; margin-top: 4px; font-weight: bold; }
     </style>
@@ -49,8 +51,7 @@
     </div>
 
     <div class="form-grid">
-        <!-- Evento oninput para buscar mientras escribes -->
-        <input type="text" id="nombre" placeholder="Nombre" oninput="buscarCliente()">
+        <input type="text" id="nombre" placeholder="Nombre del cliente" onkeyup="buscarCliente()">
         <input type="text" id="celular" placeholder="Celular" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)">
         <input type="number" id="monto" placeholder="Monto $">
         <input type="number" id="porcentaje" placeholder="Interés %">
@@ -64,7 +65,7 @@
             <tr>
                 <th>Cliente</th>
                 <th>Resumen Deuda</th>
-                <th>Pagos (Naranja = Multa $5)</th>
+                <th>Pagos</th>
                 <th>Acción</th>
             </tr>
         </thead>
@@ -79,25 +80,34 @@
     let capitalTotal = 0;
     let prestamos = [];
 
-    window.onload = () => {
-        cargarDeNube(true);
-    };
+    window.onload = () => { cargarDeNube(true); };
 
-    // FUNCIÓN DE AUTO-RELLENADO
+    // --- FUNCIÓN DE AUTO-RELLENADO MEJORADA ---
     function buscarCliente() {
-        const nombreBusqueda = document.getElementById('nombre').value.toLowerCase().trim();
-        
-        if (nombreBusqueda.length < 3) return; // Empieza a buscar después de 3 letras
+        const inputNombre = document.getElementById('nombre');
+        const valorBusqueda = inputNombre.value.toLowerCase().trim();
+        const inputsParaRellenar = ['celular', 'monto', 'porcentaje', 'semanas'];
 
-        // Buscamos si el nombre ya existe en la lista de préstamos actual
-        const clienteEncontrado = prestamos.find(p => p.nombre.toLowerCase() === nombreBusqueda);
+        if (valorBusqueda.length < 2) {
+            inputsParaRellenar.forEach(id => document.getElementById(id).classList.remove('found'));
+            inputNombre.classList.remove('found');
+            return;
+        }
 
-        if (clienteEncontrado) {
-            document.getElementById('celular').value = clienteEncontrado.celular || "";
-            document.getElementById('monto').value = clienteEncontrado.montoOriginal || ""; 
-            // Nota: He guardado 'montoOriginal' en agregarPrestamo para que esto funcione siempre con el monto base
-            document.getElementById('porcentaje').value = clienteEncontrado.porcentajeOriginal || "";
-            document.getElementById('semanas').value = clienteEncontrado.numSemanasOriginales || "";
+        // Buscar en la lista de préstamos (comparamos nombres en minúsculas)
+        const cliente = prestamos.find(p => p.nombre.toLowerCase() === valorBusqueda);
+
+        if (cliente) {
+            document.getElementById('celular').value = cliente.celular || "";
+            document.getElementById('monto').value = cliente.montoOriginal || "";
+            document.getElementById('porcentaje').value = cliente.porcentajeOriginal || 0;
+            document.getElementById('semanas').value = cliente.numSemanasOriginales || "";
+            
+            // Efecto visual de "Encontrado"
+            [inputNombre, ...inputsParaRellenar.map(id => document.getElementById(id))].forEach(el => el.classList.add('found'));
+        } else {
+            inputsParaRellenar.forEach(id => document.getElementById(id).classList.remove('found'));
+            inputNombre.classList.remove('found');
         }
     }
 
@@ -106,21 +116,13 @@
     }
 
     async function guardarEnNube() {
-        const confirmacion = confirm("¿Estás seguro de que quieres guardar los cambios en la nube?");
-        if (!confirmacion) return;
-
-        const btn = event.target;
-        const originalText = btn.innerText;
-        btn.innerText = "⌛ Guardando...";
-        const data = { capital: capitalTotal, prestamos: prestamos };
-
+        if (!confirm("¿Guardar cambios en la nube?")) return;
+        const btn = event.target; btn.innerText = "⌛ Guardando...";
         try {
-            await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(data) });
-            alert("✅ ¡Éxito! Cambios guardados.");
-        } catch (e) {
-            alert("❌ Error al guardar.");
-        }
-        btn.innerText = originalText;
+            await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
+            alert("✅ Guardado.");
+        } catch (e) { alert("❌ Error."); }
+        btn.innerText = "☁️ Guardar Cambios";
     }
 
     async function cargarDeNube(silencioso = false) {
@@ -134,9 +136,7 @@
                 renderizarTabla();
                 if(!silencioso) alert("✅ Sincronizado.");
             }
-        } catch (e) {
-            if(!silencioso) alert("❌ Error al cargar.");
-        }
+        } catch (e) { if(!silencioso) alert("❌ Error."); }
     }
 
     function agregarPrestamo() {
@@ -147,7 +147,7 @@
         const sem = parseInt(document.getElementById('semanas').value);
         const fec = document.getElementById('fechaInicio').value;
 
-        if (!nom || isNaN(mon) || !fec || isNaN(sem)) { alert("Completa todos los campos."); return; }
+        if (!nom || isNaN(mon) || !fec || isNaN(sem)) { alert("Llene los campos."); return; }
 
         const totalConInteres = mon + (mon * (por / 100));
         const cuotaBase = totalConInteres / sem;
@@ -158,7 +158,6 @@
             celular: cel,
             totalCobrar: totalConInteres,
             valorCuotaOriginal: cuotaBase,
-            // Guardamos datos originales para el auto-rellenado futuro
             montoOriginal: mon,
             porcentajeOriginal: por,
             numSemanasOriginales: sem,
@@ -170,7 +169,13 @@
         document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
         prestamos.push(nuevo);
         renderizarTabla();
-        ["nombre", "celular", "monto", "porcentaje", "semanas"].forEach(id => document.getElementById(id).value = "");
+        
+        // Limpiar y quitar color azul
+        ["nombre", "celular", "monto", "porcentaje", "semanas"].forEach(id => {
+            const el = document.getElementById(id);
+            el.value = "";
+            el.classList.remove('found');
+        });
     }
 
     function togglePago(pId, index) {
@@ -178,17 +183,14 @@
         const pago = p.pagos[index];
         const estadoAnterior = pago.estado;
         pago.estado = (pago.estado + 1) % 3;
-
         if (pago.estado === 1) capitalTotal += pago.valor;
         else if (estadoAnterior === 1) capitalTotal -= pago.valor;
-
         document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
         renderizarTabla();
     }
 
     function agregarSemana(pId) {
-        const pass = prompt("Contraseña para Multa ($5.00):");
-        if (pass === CONTRASENA_ADMIN) {
+        if (prompt("Contraseña:") === CONTRASENA_ADMIN) {
             const p = prestamos.find(x => x.id === pId);
             p.totalCobrar += 5;
             p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
@@ -197,8 +199,7 @@
     }
 
     function eliminar(pId) {
-        const pass = prompt("Contraseña para eliminar:");
-        if (pass === CONTRASENA_ADMIN) {
+        if (prompt("Contraseña:") === CONTRASENA_ADMIN) {
             prestamos = prestamos.filter(x => x.id !== pId);
             renderizarTabla();
         }
@@ -220,7 +221,7 @@
             });
             circHtml += `<div class="circle-box"><div class="circle add-week" onclick="agregarSemana(${p.id})">+</div><span class="date-label">Multa</span></div></div>`;
 
-            tr.innerHTML = `<td><strong>${p.nombre}</strong><br><a href="https://wa.me/593${p.celular}" target="_blank" style="text-decoration:none; font-size:12px;">📱 ${p.celular}</a></td>
+            tr.innerHTML = `<td><strong>${p.nombre}</strong><br><small>📱 ${p.celular}</small></td>
                 <td><small>Cuota: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong>Total:$${p.totalCobrar.toFixed(2)}</strong></td>
                 <td>${circHtml}</td>
                 <td><button onclick="eliminar(${p.id})" style="background:none; color:red; border:none; cursor:pointer; font-size:11px;">Borrar</button></td>`;
