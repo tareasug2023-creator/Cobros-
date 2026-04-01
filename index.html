@@ -3,23 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Auto-Rellenado Final</title>
+    <title>Prestamos CC - Gestión Total</title>
     <style>
-        :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; }
+        :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; --bg: #f8fafc; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 20px; color: #1e293b; }
         .container { max-width: 1300px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 20px; }
         .capital-section { background: #1e293b; color: white; padding: 15px; border-radius: 8px; text-align: center; }
         .capital-section input { background: transparent; color: #22c55e; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #f1f5f9; padding: 20px; border-radius: 8px; }
-        input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 90%; transition: 0.3s; }
-        
-        /* Estilo resaltado cuando encuentra al cliente */
-        .cliente-encontrado { border: 2px solid var(--success) !important; background-color: #f0fdf4 !important; }
-
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #f1f5f9; padding: 20px; border-radius: 8px; border: 2px solid transparent; transition: 0.3s; }
+        .form-editing { border-color: var(--warning); background: #fffbeb; }
+        input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 90%; }
         button { padding: 10px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-cloud { background-color: #059669; }
-        .btn-update { background-color: #7c3aed; }
+        .btn-update-nube { background-color: #7c3aed; }
+        .btn-edit { background: none; color: var(--warning); border: none; cursor: pointer; text-decoration: underline; font-size: 11px; margin-right: 5px; }
+        .btn-delete { background: none; color: var(--danger); border: none; cursor: pointer; text-decoration: underline; font-size: 11px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th { background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }
         td { padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
@@ -27,10 +26,7 @@
         .circle-box { min-width: 55px; text-align: center; }
         .circle { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: auto; background: white; }
         .circle.checked { background: var(--success); border-color: var(--success); color: white; }
-        .circle.checked::after { content: '✓'; }
         .circle.x-mark { background: var(--danger); border-color: var(--danger); color: white; }
-        .circle.x-mark::after { content: '✕'; }
-        .circle.add-week { border: 2px dashed var(--primary); color: var(--primary); font-weight: bold; }
         .circle.extra-fee { border-color: #f59e0b; color: #b45309; border-width: 3px; } 
         .date-label { font-size: 10px; color: #64748b; display: block; margin-top: 4px; font-weight: bold; }
     </style>
@@ -48,20 +44,20 @@
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
         <button onclick="guardarEnNube()" class="btn-cloud">☁️ Guardar Cambios</button>
-        <button onclick="cargarDeNube()" class="btn-update">🔄 Actualizar Datos</button>
+        <button onclick="cargarDeNube()" class="btn-update-nube">🔄 Actualizar Datos</button>
     </div>
 
-    <div class="form-grid">
-        <input type="text" id="nombre" placeholder="Escriba nombre..." onkeyup="autoRellenar()">
+    <div class="form-grid" id="mainForm">
+        <input type="text" id="nombre" placeholder="Nombre" onkeyup="autoRellenar()">
         <input type="text" id="celular" placeholder="Celular" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)">
         <input type="number" id="monto" placeholder="Monto $">
         <input type="number" id="porcentaje" placeholder="Interés %">
         <input type="number" id="semanas" placeholder="Semanas" min="1">
         <input type="date" id="fechaInicio">
-        <button onclick="agregarPrestamo()">Registrar</button>
+        <button id="btnRegistrar" onclick="procesarPrestamo()">Registrar</button>
     </div>
 
-    <table id="tablaGeneral">
+    <table>
         <thead>
             <tr>
                 <th>Cliente</th>
@@ -80,49 +76,29 @@
 
     let capitalTotal = 0;
     let prestamos = [];
+    let editandoID = null;
 
     window.onload = () => { cargarDeNube(true); };
 
-    // --- FUNCIÓN DE AUTO-RELLENADO (VERSIÓN CORREGIDA) ---
     function autoRellenar() {
+        if (editandoID) return;
         const busqueda = document.getElementById('nombre').value.toLowerCase().trim();
-        const campos = ['celular', 'monto', 'porcentaje', 'semanas'];
-
-        // Si no hay suficiente texto, limpiamos el color verde
-        if (busqueda.length < 2) {
-            campos.forEach(id => document.getElementById(id).classList.remove('cliente-encontrado'));
-            return;
-        }
-
-        // Buscamos en la lista de préstamos actuales (la que está en la tabla)
+        if (busqueda.length < 2) return;
         const cliente = prestamos.find(p => p.nombre.toLowerCase().includes(busqueda));
-
         if (cliente) {
             document.getElementById('celular').value = cliente.celular || "";
-            // Usamos los valores guardados al momento del registro original
             document.getElementById('monto').value = cliente.montoOriginal || "";
             document.getElementById('porcentaje').value = cliente.porcentajeOriginal || 0;
             document.getElementById('semanas').value = cliente.numSemanasOriginales || "";
-            
-            // Resaltamos en verde para avisar que se auto-rellenó
-            campos.forEach(id => document.getElementById(id).classList.add('cliente-encontrado'));
-        } else {
-            campos.forEach(id => document.getElementById(id).classList.remove('cliente-encontrado'));
         }
-    }
-
-    function actualizarCapitalManual() {
-        capitalTotal = parseFloat(document.getElementById('capitalGlobal').value) || 0;
     }
 
     async function guardarEnNube() {
         if (!confirm("¿Guardar cambios en la nube?")) return;
-        const btn = event.target; btn.innerText = "⌛ Guardando...";
         try {
             await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
-            alert("✅ Guardado exitoso.");
-        } catch (e) { alert("❌ Error al guardar."); }
-        btn.innerText = "☁️ Guardar Cambios";
+            alert("✅ Guardado.");
+        } catch (e) { alert("❌ Error."); }
     }
 
     async function cargarDeNube(silencioso = false) {
@@ -134,9 +110,14 @@
                 capitalTotal = parseFloat(data.capital) || 0;
                 document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
                 renderizarTabla();
-                if(!silencioso) alert("✅ Datos actualizados.");
+                if(!silencioso) alert("✅ Actualizado.");
             }
-        } catch (e) { if(!silencioso) alert("❌ Error al conectar."); }
+        } catch (e) { if(!silencioso) alert("❌ Error."); }
+    }
+
+    function procesarPrestamo() {
+        if (editandoID) finalizarEdicion();
+        else agregarPrestamo();
     }
 
     function agregarPrestamo() {
@@ -147,7 +128,7 @@
         const sem = parseInt(document.getElementById('semanas').value);
         const fec = document.getElementById('fechaInicio').value;
 
-        if (!nom || isNaN(mon) || !fec || isNaN(sem)) { alert("Por favor complete los campos."); return; }
+        if (!nom || isNaN(mon) || !fec || isNaN(sem)) { alert("Llene los campos."); return; }
 
         const totalConInteres = mon + (mon * (por / 100));
         const cuotaBase = totalConInteres / sem;
@@ -158,7 +139,6 @@
             celular: cel,
             totalCobrar: totalConInteres,
             valorCuotaOriginal: cuotaBase,
-            // IMPORTANTE: Guardamos estos datos para que el auto-relleno funcione después
             montoOriginal: mon,
             porcentajeOriginal: por,
             numSemanasOriginales: sem,
@@ -167,27 +147,93 @@
         };
 
         capitalTotal -= mon;
-        document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
         prestamos.push(nuevo);
-        renderizarTabla();
+        actualizarUI();
+    }
+
+    function prepararEdicion(id) {
+        if (prompt("Contraseña para editar:") !== CONTRASENA_ADMIN) return;
+        const p = prestamos.find(x => x.id === id);
+        editandoID = id;
+        document.getElementById('nombre').value = p.nombre;
+        document.getElementById('celular').value = p.celular;
+        document.getElementById('monto').value = p.montoOriginal;
+        document.getElementById('porcentaje').value = p.porcentajeOriginal;
+        document.getElementById('semanas').value = p.numSemanasOriginales;
+        document.getElementById('fechaInicio').value = p.fechaInicio;
+        document.getElementById('mainForm').classList.add('form-editing');
+        const btn = document.getElementById('btnRegistrar');
+        btn.innerText = "Actualizar Registro";
+        btn.style.backgroundColor = "var(--warning)";
+        window.scrollTo(0, 0);
+    }
+
+    function finalizarEdicion() {
+        const p = prestamos.find(x => x.id === editandoID);
+        const monNuevo = parseFloat(document.getElementById('monto').value);
+        const porNuevo = parseFloat(document.getElementById('porcentaje').value) || 0;
+        const semNuevas = parseInt(document.getElementById('semanas').value);
+
+        // Ajuste de capital por diferencia de monto prestado
+        capitalTotal += (p.montoOriginal - monNuevo);
+
+        p.nombre = document.getElementById('nombre').value;
+        p.celular = document.getElementById('celular').value;
+        p.montoOriginal = monNuevo;
+        p.porcentajeOriginal = porNuevo;
+        p.numSemanasOriginales = semNuevas;
+        p.fechaInicio = document.getElementById('fechaInicio').value;
         
-        // Limpiar
-        ["nombre", "celular", "monto", "porcentaje", "semanas"].forEach(id => {
-            const el = document.getElementById(id);
-            el.value = "";
-            el.classList.remove('cliente-encontrado');
-        });
+        const nuevoTotal = monNuevo + (monNuevo * (porNuevo / 100));
+        p.totalCobrar = nuevoTotal;
+        p.valorCuotaOriginal = nuevoTotal / semNuevas;
+
+        if (p.pagos.length !== semNuevas) {
+            p.pagos = Array.from({length: semNuevas}, () => ({ tipo: 'normal', estado: 0, valor: p.valorCuotaOriginal }));
+        }
+
+        editandoID = null;
+        document.getElementById('mainForm').classList.remove('form-editing');
+        const btn = document.getElementById('btnRegistrar');
+        btn.innerText = "Registrar";
+        btn.style.backgroundColor = "var(--primary)";
+        actualizarUI();
+    }
+
+    function eliminar(pId) {
+        if (prompt("Contraseña para eliminar:") === CONTRASENA_ADMIN) {
+            const p = prestamos.find(x => x.id === pId);
+            
+            // --- CORRECCIÓN: DEVOLVER DINERO AL CAPITAL ---
+            // 1. Devolvemos el monto que se prestó inicialmente
+            capitalTotal += p.montoOriginal;
+            
+            // 2. Restamos lo que ya se había cobrado (puntos verdes) para que el balance sea real
+            p.pagos.forEach(pago => {
+                if (pago.estado === 1) {
+                    capitalTotal -= pago.valor;
+                }
+            });
+
+            prestamos = prestamos.filter(x => x.id !== pId);
+            actualizarUI();
+        }
+    }
+
+    function actualizarUI() {
+        document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
+        renderizarTabla();
+        ["nombre", "celular", "monto", "porcentaje", "semanas", "fechaInicio"].forEach(id => document.getElementById(id).value = "");
     }
 
     function togglePago(pId, index) {
         const p = prestamos.find(x => x.id === pId);
         const pago = p.pagos[index];
-        const estadoAnterior = pago.estado;
+        const ant = pago.estado;
         pago.estado = (pago.estado + 1) % 3;
         if (pago.estado === 1) capitalTotal += pago.valor;
-        else if (estadoAnterior === 1) capitalTotal -= pago.valor;
-        document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
-        renderizarTabla();
+        else if (ant === 1) capitalTotal -= pago.valor;
+        actualizarUI();
     }
 
     function agregarSemana(pId) {
@@ -195,13 +241,6 @@
             const p = prestamos.find(x => x.id === pId);
             p.totalCobrar += 5;
             p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
-            renderizarTabla();
-        }
-    }
-
-    function eliminar(pId) {
-        if (prompt("Contraseña de seguridad:") === CONTRASENA_ADMIN) {
-            prestamos = prestamos.filter(x => x.id !== pId);
             renderizarTabla();
         }
     }
@@ -225,9 +264,16 @@
             tr.innerHTML = `<td><strong>${p.nombre}</strong><br><small>📱 ${p.celular}</small></td>
                 <td><small>Cuota: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong>Total:$${p.totalCobrar.toFixed(2)}</strong></td>
                 <td>${circHtml}</td>
-                <td><button onclick="eliminar(${p.id})" style="background:none; color:red; border:none; cursor:pointer; font-size:11px; text-decoration:underline;">Borrar</button></td>`;
+                <td>
+                    <button onclick="prepararEdicion(${p.id})" class="btn-edit">Editar</button>
+                    <button onclick="eliminar(${p.id})" class="btn-delete">Borrar</button>
+                </td>`;
             tbody.appendChild(tr);
         });
+    }
+
+    function actualizarCapitalManual() {
+        capitalTotal = parseFloat(document.getElementById('capitalGlobal').value) || 0;
     }
 </script>
 
