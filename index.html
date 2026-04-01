@@ -3,22 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Gestión Total</title>
+    <title>Prestamos CC - Control de Ganancias</title>
     <style>
-        :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; --bg: #f8fafc; }
+        :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; --bg: #f8fafc; --dark: #1e293b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 20px; color: #1e293b; }
         .container { max-width: 1300px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        /* Encabezado y Capital */
         .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 20px; }
-        .capital-section { background: #1e293b; color: white; padding: 15px; border-radius: 8px; text-align: center; }
-        .capital-section input { background: transparent; color: #22c55e; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
+        .capital-section { background: var(--dark); color: white; padding: 15px; border-radius: 8px; text-align: center; }
+        .capital-section input { background: transparent; color: var(--success); border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
+        
+        /* Panel de Ganancias */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary); }
+        .stat-card h4 { margin: 0; font-size: 12px; color: #64748b; text-transform: uppercase; }
+        .stat-card p { margin: 5px 0 0; font-size: 20px; font-weight: bold; color: var(--dark); }
+        .stat-card.total-gain { border-left-color: var(--success); background: #f0fdf4; }
+
+        /* Formulario */
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #f1f5f9; padding: 20px; border-radius: 8px; border: 2px solid transparent; transition: 0.3s; }
         .form-editing { border-color: var(--warning); background: #fffbeb; }
         input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 90%; }
         button { padding: 10px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
         .btn-cloud { background-color: #059669; }
         .btn-update-nube { background-color: #7c3aed; }
         .btn-edit { background: none; color: var(--warning); border: none; cursor: pointer; text-decoration: underline; font-size: 11px; margin-right: 5px; }
         .btn-delete { background: none; color: var(--danger); border: none; cursor: pointer; text-decoration: underline; font-size: 11px; }
+
+        /* Tabla y Pagos */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th { background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }
         td { padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
@@ -39,6 +53,17 @@
         <div class="capital-section">
             CAPITAL DISPONIBLE<br>
             $ <input type="number" id="capitalGlobal" step="0.01" value="0.00" onchange="actualizarCapitalManual()">
+        </div>
+    </div>
+
+    <div class="stats-grid" id="panelGanancias">
+        <div class="stat-card total-gain">
+            <h4>Ganancia Total (Interés + Multas)</h4>
+            <p id="gananciaTotal">$ 0.00</p>
+        </div>
+        <div class="stat-card">
+            <h4>Ganancia Mes Actual</h4>
+            <p id="gananciaMes">$ 0.00</p>
         </div>
     </div>
 
@@ -80,19 +105,40 @@
 
     window.onload = () => { cargarDeNube(true); };
 
-    function autoRellenar() {
-        if (editandoID) return;
-        const busqueda = document.getElementById('nombre').value.toLowerCase().trim();
-        if (busqueda.length < 2) return;
-        const cliente = prestamos.find(p => p.nombre.toLowerCase().includes(busqueda));
-        if (cliente) {
-            document.getElementById('celular').value = cliente.celular || "";
-            document.getElementById('monto').value = cliente.montoOriginal || "";
-            document.getElementById('porcentaje').value = cliente.porcentajeOriginal || 0;
-            document.getElementById('semanas').value = cliente.numSemanasOriginales || "";
-        }
+    // --- CÁLCULO DE GANANCIAS ---
+    function calcularGanancias() {
+        let totalInteresMultas = 0;
+        let interesMesActual = 0;
+        const ahora = new Date();
+        const mesActual = ahora.getMonth();
+        const anioActual = ahora.getFullYear();
+
+        prestamos.forEach(p => {
+            // La ganancia de cada cuota es: ValorCuota - (MontoOriginal / SemanasOriginales)
+            // Pero como tú quieres Interés + Multas, calculamos la ganancia por cuota pagada
+            const gananciaPorCuota = p.valorCuotaOriginal - (p.montoOriginal / p.numSemanasOriginales);
+            
+            let fBase = new Date(p.fechaInicio + "T00:00:00");
+
+            p.pagos.forEach(pago => {
+                fBase.setDate(fBase.getDate() + 7);
+                
+                if (pago.estado === 1) { // Si está pagado (Verde)
+                    let gananciaDeEstePago = (pago.tipo === 'extra') ? 5 : gananciaPorCuota;
+                    totalInteresMultas += gananciaDeEstePago;
+
+                    if (fBase.getMonth() === mesActual && fBase.getFullYear() === anioActual) {
+                        interesMesActual += gananciaDeEstePago;
+                    }
+                }
+            });
+        });
+
+        document.getElementById('gananciaTotal').innerText = `$ ${totalInteresMultas.toFixed(2)}`;
+        document.getElementById('gananciaMes').innerText = `$ ${interesMesActual.toFixed(2)}`;
     }
 
+    // --- FUNCIONES DE NUBE ---
     async function guardarEnNube() {
         if (!confirm("¿Guardar cambios en la nube?")) return;
         try {
@@ -109,12 +155,13 @@
                 prestamos = data.prestamos || [];
                 capitalTotal = parseFloat(data.capital) || 0;
                 document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
-                renderizarTabla();
+                actualizarUI();
                 if(!silencioso) alert("✅ Actualizado.");
             }
         } catch (e) { if(!silencioso) alert("❌ Error."); }
     }
 
+    // --- GESTIÓN DE PRÉSTAMOS ---
     function procesarPrestamo() {
         if (editandoID) finalizarEdicion();
         else agregarPrestamo();
@@ -151,8 +198,18 @@
         actualizarUI();
     }
 
+    function eliminar(pId) {
+        if (prompt("Contraseña:") === CONTRASENA_ADMIN) {
+            const p = prestamos.find(x => x.id === pId);
+            capitalTotal += p.montoOriginal;
+            p.pagos.forEach(pago => { if (pago.estado === 1) capitalTotal -= pago.valor; });
+            prestamos = prestamos.filter(x => x.id !== pId);
+            actualizarUI();
+        }
+    }
+
     function prepararEdicion(id) {
-        if (prompt("Contraseña para editar:") !== CONTRASENA_ADMIN) return;
+        if (prompt("Contraseña:") !== CONTRASENA_ADMIN) return;
         const p = prestamos.find(x => x.id === id);
         editandoID = id;
         document.getElementById('nombre').value = p.nombre;
@@ -162,9 +219,7 @@
         document.getElementById('semanas').value = p.numSemanasOriginales;
         document.getElementById('fechaInicio').value = p.fechaInicio;
         document.getElementById('mainForm').classList.add('form-editing');
-        const btn = document.getElementById('btnRegistrar');
-        btn.innerText = "Actualizar Registro";
-        btn.style.backgroundColor = "var(--warning)";
+        document.getElementById('btnRegistrar').innerText = "Actualizar Registro";
         window.scrollTo(0, 0);
     }
 
@@ -174,9 +229,7 @@
         const porNuevo = parseFloat(document.getElementById('porcentaje').value) || 0;
         const semNuevas = parseInt(document.getElementById('semanas').value);
 
-        // Ajuste de capital por diferencia de monto prestado
         capitalTotal += (p.montoOriginal - monNuevo);
-
         p.nombre = document.getElementById('nombre').value;
         p.celular = document.getElementById('celular').value;
         p.montoOriginal = monNuevo;
@@ -194,35 +247,15 @@
 
         editandoID = null;
         document.getElementById('mainForm').classList.remove('form-editing');
-        const btn = document.getElementById('btnRegistrar');
-        btn.innerText = "Registrar";
-        btn.style.backgroundColor = "var(--primary)";
+        document.getElementById('btnRegistrar').innerText = "Registrar";
         actualizarUI();
     }
 
-    function eliminar(pId) {
-        if (prompt("Contraseña para eliminar:") === CONTRASENA_ADMIN) {
-            const p = prestamos.find(x => x.id === pId);
-            
-            // --- CORRECCIÓN: DEVOLVER DINERO AL CAPITAL ---
-            // 1. Devolvemos el monto que se prestó inicialmente
-            capitalTotal += p.montoOriginal;
-            
-            // 2. Restamos lo que ya se había cobrado (puntos verdes) para que el balance sea real
-            p.pagos.forEach(pago => {
-                if (pago.estado === 1) {
-                    capitalTotal -= pago.valor;
-                }
-            });
-
-            prestamos = prestamos.filter(x => x.id !== pId);
-            actualizarUI();
-        }
-    }
-
+    // --- INTERFAZ ---
     function actualizarUI() {
         document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
         renderizarTabla();
+        calcularGanancias(); // Recalcular ganancias cada vez que algo cambia
         ["nombre", "celular", "monto", "porcentaje", "semanas", "fechaInicio"].forEach(id => document.getElementById(id).value = "");
     }
 
@@ -236,12 +269,25 @@
         actualizarUI();
     }
 
+    function autoRellenar() {
+        if (editandoID) return;
+        const bus = document.getElementById('nombre').value.toLowerCase().trim();
+        if (bus.length < 2) return;
+        const c = prestamos.find(p => p.nombre.toLowerCase().includes(bus));
+        if (c) {
+            document.getElementById('celular').value = c.celular || "";
+            document.getElementById('monto').value = c.montoOriginal || "";
+            document.getElementById('porcentaje').value = c.porcentajeOriginal || 0;
+            document.getElementById('semanas').value = c.numSemanasOriginales || "";
+        }
+    }
+
     function agregarSemana(pId) {
         if (prompt("Contraseña:") === CONTRASENA_ADMIN) {
             const p = prestamos.find(x => x.id === pId);
             p.totalCobrar += 5;
             p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
-            renderizarTabla();
+            actualizarUI();
         }
     }
 
@@ -274,6 +320,7 @@
 
     function actualizarCapitalManual() {
         capitalTotal = parseFloat(document.getElementById('capitalGlobal').value) || 0;
+        calcularGanancias();
     }
 </script>
 
