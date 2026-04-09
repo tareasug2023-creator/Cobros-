@@ -3,36 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Balance de Modos</title>
+    <title>Prestamos CC - Corrección de Tabla</title>
     <style>
-        /* VARIABLES DE MODO CLARO (ALTO CONTRASTE) */
+        /* MODO CLARO (ALTO CONTRASTE) */
         :root { 
-            --primary: #1e40af; 
-            --success: #15803d; 
-            --danger: #b91c1c;  
-            --warning: #b45309; 
-            --bg: #f1f5f9;      
-            --card-bg: #ffffff;
-            --text-main: #0f172a; 
-            --text-dim: #334155;  
-            --input-bg: #ffffff;
-            --border: #94a3b8;    /* Bordes visibles en modo claro */
-            --header-bg: #0f172a;
+            --primary: #1e40af; --success: #15803d; --danger: #b91c1c; --warning: #b45309; 
+            --bg: #f1f5f9; --card-bg: #ffffff; --text-main: #0f172a; --text-dim: #334155;  
+            --input-bg: #ffffff; --border: #94a3b8; --header-bg: #0f172a;
         }
 
-        /* VARIABLES DE MODO OSCURO (EL ANTERIOR QUE TE GUSTABA) */
+        /* MODO OSCURO (ESTILO ORIGINAL) */
         body.dark-mode { 
-            --primary: #3b82f6; 
-            --success: #22c55e; 
-            --danger: #ef4444; 
-            --warning: #f59e0b;
-            --bg: #0f172a; 
-            --card-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-dim: #94a3b8;
-            --input-bg: #0f172a;
-            --border: #334155;    /* Bordes más suaves en modo oscuro */
-            --header-bg: #0f172a;
+            --primary: #3b82f6; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #0f172a; --card-bg: #1e293b; --text-main: #f8fafc; --text-dim: #94a3b8;
+            --input-bg: #0f172a; --border: #334155; --header-bg: #0f172a;
         }
 
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 20px; color: var(--text-main); transition: 0.3s; }
@@ -46,7 +30,7 @@
         .btn-ajuste-cap { display: block; margin-top: 5px; font-size: 11px; color: #60a5fa; cursor: pointer; text-decoration: underline; font-weight: bold; }
 
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: var(--card-bg); padding: 15px; border-radius: 8px; border: 2px solid var(--border); border-left: 8px solid var(--primary); }
+        .stat-card { background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); border-left: 8px solid var(--primary); }
         
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: rgba(0,0,0,0.05); padding: 20px; border-radius: 8px; border: 1px solid var(--border); }
         body.dark-mode .form-grid { background: var(--bg); }
@@ -61,7 +45,6 @@
 
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th { text-align: left; padding: 12px; border: 1px solid var(--border); background: rgba(0,0,0,0.05); color: var(--text-main); font-weight: 800; }
-        body.dark-mode th { background: rgba(255,255,255,0.05); }
         td { padding: 12px; border: 1px solid var(--border); vertical-align: middle; }
         
         .payment-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
@@ -96,8 +79,8 @@
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-        <button onclick="guardarEnNube()" class="btn-cloud">☁️ Guardar Cambios</button>
-        <button onclick="cargarDeNube()" class="btn-update-nube">🔄 Actualizar Datos</button>
+        <button onclick="guardarEnNube()" class="btn-cloud">☁️ Guardar</button>
+        <button onclick="cargarDeNube()" class="btn-update-nube">🔄 Actualizar</button>
     </div>
 
     <div class="form-grid" id="mainForm">
@@ -106,18 +89,18 @@
         <input type="number" id="monto" placeholder="Monto $">
         <input type="number" id="porcentaje" placeholder="Interés %">
         <select id="modalidad" onchange="cambiarModalidad()">
-            <option value="semanal">Cobro Semanal</option>
-            <option value="quincenal">Cobro Quincenal (15/30)</option>
+            <option value="semanal">Semanal</option>
+            <option value="quincenal">Quincenal (15/30)</option>
         </select>
         <input type="number" id="semanas" placeholder="Semanas" min="1">
         <input type="date" id="fechaInicio">
-        <button id="btnRegistrar" onclick="procesarPrestamo()">Registrar Préstamo</button>
+        <button id="btnRegistrar" onclick="procesarPrestamo()">Registrar</button>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th>CLIENTE / INFO</th>
+                <th>CLIENTE</th>
                 <th>DEUDA</th>
                 <th>PAGOS</th>
                 <th>ACCIONES</th>
@@ -134,7 +117,7 @@
     let capitalTotal = 0;
     let prestamos = [];
     let editandoID = null;
-    let mesesColapsados = {};
+    let mesesColapsados = {}; 
 
     function cambiarModalidad() {
         const mod = document.getElementById('modalidad').value;
@@ -154,9 +137,7 @@
     }
 
     function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            alert("✅ Link de Lector copiado satisfactoriamente.");
-        });
+        navigator.clipboard.writeText(text).then(() => { alert("✅ Link copiado."); });
     }
 
     function toggleMes(mesId) {
@@ -165,8 +146,8 @@
     }
 
     function ajustarCapitalConClave() {
-        if (prompt("Ingrese clave de administrador:") === CONTRASENA_ADMIN) {
-            const n = prompt("Establecer nuevo capital disponible:", capitalTotal.toFixed(2));
+        if (prompt("Clave:") === CONTRASENA_ADMIN) {
+            const n = prompt("Nuevo capital:", capitalTotal.toFixed(2));
             if (n) { capitalTotal = parseFloat(n); actualizarUI(); }
         }
     }
@@ -190,13 +171,13 @@
         let total = 0; let mes = 0;
         const ahora = new Date();
         prestamos.forEach(p => {
-            const numCuotas = p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales;
+            const numCuotas = p.modalidad === 'quincenal' ? 2 : (p.numSemanasOriginales || 1);
             const gananciaPorCuota = (p.totalCobrar - p.montoOriginal) / numCuotas;
             let fBase = new Date(p.fechaInicio + "T00:00:00");
             p.pagos.forEach((pago, idx) => {
                 let fPago = new Date(fBase);
-                if (p.modalidad === 'quincenal') { fPago.setDate(fPago.getDate() + (idx === 0 ? 15 : 30)); }
-                else { fPago.setDate(fPago.getDate() + ((idx + 1) * 7)); }
+                if (p.modalidad === 'quincenal') fPago.setDate(fPago.getDate() + (idx === 0 ? 15 : 30));
+                else fPago.setDate(fPago.getDate() + ((idx + 1) * 7));
                 if (pago.estado === 1) {
                     let g = (pago.tipo === 'extra') ? 5 : gananciaPorCuota;
                     total += g;
@@ -209,10 +190,10 @@
     }
 
     async function guardarEnNube() {
-        if (!confirm("¿Confirmar guardado en la nube?")) return;
+        if (!confirm("¿Guardar cambios?")) return;
         try {
             await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
-            alert("✅ Cambios guardados.");
+            alert("✅ Guardado.");
         } catch (e) { alert("❌ Error."); }
     }
 
@@ -223,8 +204,14 @@
             if (data) {
                 prestamos = data.prestamos || [];
                 capitalTotal = parseFloat(data.capital) || 0;
+                // Al cargar, nos aseguramos de que los meses no estén colapsados por defecto
+                prestamos.forEach(p => {
+                    const f = new Date(p.fechaInicio + "T00:00:00");
+                    const mId = f.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                    if (!(mId in mesesColapsados)) mesesColapsados[mId] = false;
+                });
                 actualizarUI();
-                if(!silencioso) alert("✅ Datos sincronizados.");
+                if(!silencioso) alert("✅ Datos cargados.");
             }
         } catch (e) { if(!silencioso) alert("❌ Error."); }
     }
@@ -273,20 +260,20 @@
 
     function finalizarEdicion() {
         const p = prestamos.find(x => x.id === editandoID);
-        const monNuevo = parseFloat(document.getElementById('monto').value);
-        const porNuevo = parseFloat(document.getElementById('porcentaje').value) || 0;
-        const modNuevo = document.getElementById('modalidad').value;
-        const semNuevas = parseInt(document.getElementById('semanas').value) || 2;
-        capitalTotal += (p.montoOriginal - monNuevo);
+        const monN = parseFloat(document.getElementById('monto').value);
+        const porN = parseFloat(document.getElementById('porcentaje').value) || 0;
+        const modN = document.getElementById('modalidad').value;
+        const semN = parseInt(document.getElementById('semanas').value) || 2;
+        capitalTotal += (p.montoOriginal - monN);
         p.nombre = document.getElementById('nombre').value;
         p.celular = document.getElementById('celular').value;
-        p.montoOriginal = monNuevo; p.porcentajeOriginal = porNuevo;
-        p.modalidad = modNuevo; p.numSemanasOriginales = semNuevas;
+        p.montoOriginal = monN; p.porcentajeOriginal = porN;
+        p.modalidad = modN; p.numSemanasOriginales = semN;
         p.fechaInicio = document.getElementById('fechaInicio').value;
-        const nT = monNuevo + (monNuevo * (porNuevo / 100));
-        const nC = (modNuevo === 'quincenal') ? 2 : semNuevas;
-        p.totalCobrar = nT; p.valorCuotaOriginal = nT / nC;
-        p.pagos = Array.from({length: nC}, () => ({ tipo: 'normal', estado: 0, valor: p.valorCuotaOriginal }));
+        const nT = monN + (monN * (porN / 100));
+        const nCuotas = (modN === 'quincenal') ? 2 : semN;
+        p.totalCobrar = nT; p.valorCuotaOriginal = nT / nCuotas;
+        p.pagos = Array.from({length: nCuotas}, () => ({ tipo: 'normal', estado: 0, valor: p.valorCuotaOriginal }));
         editandoID = null;
         actualizarUI();
     }
@@ -303,6 +290,7 @@
 
     function actualizarUI() {
         document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
+        // Ordenar por fecha de inicio (más antiguo a más nuevo)
         prestamos.sort((a, b) => new Date(a.fechaInicio + "T00:00:00") - new Date(b.fechaInicio + "T00:00:00"));
         renderizarTabla();
         calcularGanancias();
@@ -320,7 +308,7 @@
     }
 
     function agregarSemana(pId) {
-        if (prompt("Clave para multa ($5):") === CONTRASENA_ADMIN) {
+        if (prompt("Clave multa:") === CONTRASENA_ADMIN) {
             const p = prestamos.find(x => x.id === pId);
             p.totalCobrar += 5;
             p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
@@ -332,20 +320,23 @@
         const tbody = document.getElementById('cuerpoTabla');
         tbody.innerHTML = "";
         let ultimoMes = "";
+        
         prestamos.forEach(p => {
-            const fObj = new Date(p.fechaInicio + "T00:00:00");
-            const mesId = fObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-            if (mesId !== ultimoMes) {
-                const trMes = document.createElement('tr');
-                const icono = mesesColapsados[mesId] ? "🔽" : "🔼";
-                trMes.innerHTML = `<td colspan="4" class="month-divider" onclick="toggleMes('${mesId}')">${mesId} <span style="float:right;">${icono}</span></td>`;
-                tbody.appendChild(trMes);
-                ultimoMes = mesId;
-            }
-            if (mesesColapsados[mesId]) return;
+            const fO = new Date(p.fechaInicio + "T00:00:00");
+            const mId = fO.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
-            let cadP = p.pagos.map(pag => pag.estado).join('');
-            let linkL = `https://tareasug2023-creator.github.io/Cobros-/lector.html?n=${encodeURIComponent(p.nombre)}&t=${p.totalCobrar.toFixed(2)}&c=${p.valorCuotaOriginal.toFixed(2)}&f=${p.fechaInicio}&p=${cadP}`;
+            if (mId !== ultimoMes) {
+                const trM = document.createElement('tr');
+                const icono = mesesColapsados[mId] ? "🔽" : "🔼";
+                trM.innerHTML = `<td colspan="4" class="month-divider" onclick="toggleMes('${mId}')">${mId.toUpperCase()} <span style="float:right;">${icono}</span></td>`;
+                tbody.appendChild(trM);
+                ultimoMes = mId;
+            }
+
+            if (mesesColapsados[mId]) return;
+
+            const cadP = p.pagos.map(pag => pag.estado).join('');
+            const linkL = `https://tareasug2023-creator.github.io/Cobros-/lector.html?n=${encodeURIComponent(p.nombre)}&t=${p.totalCobrar.toFixed(2)}&c=${p.valorCuotaOriginal.toFixed(2)}&f=${p.fechaInicio}&p=${cadP}`;
 
             const tr = document.createElement('tr');
             let circs = '<div class="payment-scroll">';
@@ -358,8 +349,8 @@
             });
             circs += `<div class="circle add-week" onclick="agregarSemana(${p.id})">+</div></div>`;
 
-            tr.innerHTML = `<td><strong style="font-size:1.1em;">${p.nombre}</strong> <span class="modalidad-label">${p.modalidad.toUpperCase()}</span><br><span class="start-date-label">INICIO: ${p.fechaInicio}</span><br><a href="https://wa.me/593${p.celular}" target="_blank" style="color:var(--primary); font-size:12px; font-weight:bold; text-decoration:none;">📱 WHATSAPP</a></td>
-                <td><small>CUOTA: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong style="font-size:1.2em;">TOTAL: $${p.totalCobrar.toFixed(2)}</strong></td>
+            tr.innerHTML = `<td><strong>${p.nombre}</strong> <span class="modalidad-label">${p.modalidad.toUpperCase()}</span><br><span class="start-date-label">INICIO: ${p.fechaInicio}</span><br><a href="https://wa.me/593${p.celular}" target="_blank" style="color:var(--primary); font-size:12px; font-weight:bold; text-decoration:none;">📱 WHATSAPP</a></td>
+                <td><small>$${p.valorCuotaOriginal.toFixed(2)}</small><br><strong style="font-size:1.2em;">$${p.totalCobrar.toFixed(2)}</strong></td>
                 <td>${circs}</td>
                 <td>
                     <button onclick="prepararEdicion(${p.id})" style="background:none; color:var(--warning); text-decoration:underline; font-size:11px; border:none; cursor:pointer; font-weight:bold;">EDITAR</button><br>
