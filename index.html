@@ -326,8 +326,7 @@
             // --- LÓGICA DE LINK LECTOR ---
             let cadP = p.pagos.map(pag => pag.estado).join('');
             // CAMBIA TU_USUARIO Y TU_REPO AQUÍ ABAJO
-            let linkL = `https://tareasug2023-creador.github.io/Cobros-/lector.html?n=${encodeURIComponent(p.nombre)}&t=${p.totalCobrar.toFixed(2)}&c=${p.valorCuotaOriginal.toFixed(2)}&f=${p.fechaInicio}&p=${cadP}`;
-
+           let linkL = `https://tareasug2023-creator.github.io/Cobros-/lector.html?n=${encodeURIComponent(p.nombre)}&t=${p.totalCobrar.toFixed(2)}&c=${p.valorCuotaOriginal.toFixed(2)}&f=${p.fechaInicio}&p=${cadP}`;
             const tr = document.createElement('tr');
             let circs = '<div class="payment-scroll">';
             p.pagos.forEach((pago, i) => {
