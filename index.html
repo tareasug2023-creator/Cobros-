@@ -3,38 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Contraste Alto</title>
+    <title>Prestamos CC - Balance de Modos</title>
     <style>
-        /* PALETA DE COLORES MEJORADA PARA ALTO CONTRASTE */
+        /* VARIABLES DE MODO CLARO (ALTO CONTRASTE) */
         :root { 
-            --primary: #1e40af; /* Azul oscuro */
-            --success: #15803d; /* Verde bosque */
-            --danger: #b91c1c;  /* Rojo sangre */
-            --warning: #b45309; /* Ámbar oscuro */
-            --bg: #f1f5f9;      /* Gris muy claro */
+            --primary: #1e40af; 
+            --success: #15803d; 
+            --danger: #b91c1c;  
+            --warning: #b45309; 
+            --bg: #f1f5f9;      
             --card-bg: #ffffff;
-            --text-main: #0f172a; /* Casi negro */
-            --text-dim: #334155;  /* Gris pizarra */
+            --text-main: #0f172a; 
+            --text-dim: #334155;  
             --input-bg: #ffffff;
-            --border: #94a3b8;    /* Gris definido para líneas */
+            --border: #94a3b8;    /* Bordes visibles en modo claro */
             --header-bg: #0f172a;
         }
 
+        /* VARIABLES DE MODO OSCURO (EL ANTERIOR QUE TE GUSTABA) */
         body.dark-mode { 
-            --bg: #020617; 
-            --card-bg: #0f172a;
+            --primary: #3b82f6; 
+            --success: #22c55e; 
+            --danger: #ef4444; 
+            --warning: #f59e0b;
+            --bg: #0f172a; 
+            --card-bg: #1e293b;
             --text-main: #f8fafc;
-            --text-dim: #cbd5e1;
-            --input-bg: #1e293b;
-            --border: #334155;
-            --header-bg: #020617;
+            --text-dim: #94a3b8;
+            --input-bg: #0f172a;
+            --border: #334155;    /* Bordes más suaves en modo oscuro */
+            --header-bg: #0f172a;
         }
 
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 20px; color: var(--text-main); transition: 0.3s; }
-        .container { max-width: 1300px; margin: auto; background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid var(--border); }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 20px; color: var(--text-main); transition: 0.3s; }
+        .container { max-width: 1300px; margin: auto; background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid var(--border); }
         .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary); padding-bottom: 20px; margin-bottom: 20px; }
         
-        .theme-toggle { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .theme-toggle { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
         .capital-section { background: var(--header-bg); color: white; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--primary); }
         .capital-section input { background: transparent; color: #4ade80; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
@@ -42,37 +47,33 @@
 
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .stat-card { background: var(--card-bg); padding: 15px; border-radius: 8px; border: 2px solid var(--border); border-left: 8px solid var(--primary); }
-        .stat-card h4 { margin: 0; color: var(--text-dim); font-size: 0.9em; text-transform: uppercase; }
-        .stat-card p { margin: 5px 0 0; font-size: 1.4em; font-weight: bold; color: var(--primary); }
-
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #e2e8f0; padding: 20px; border-radius: 8px; border: 2px solid var(--border); }
-        body.dark-mode .form-grid { background: #1e293b; }
         
-        input, select { padding: 12px; background: var(--input-bg); border: 2px solid var(--border); border-radius: 6px; font-size: 14px; color: var(--text-main); font-weight: 500; }
-        input:focus { border-color: var(--primary); outline: none; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: rgba(0,0,0,0.05); padding: 20px; border-radius: 8px; border: 1px solid var(--border); }
+        body.dark-mode .form-grid { background: var(--bg); }
         
-        button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        input, select { padding: 12px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px; font-size: 14px; color: var(--text-main); width: 100%; box-sizing: border-box; }
+        
+        button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; text-transform: uppercase; }
         .btn-cloud { background-color: var(--success); }
-        .btn-update-nube { background-color: #6d28d9; }
+        .btn-update-nube { background-color: #7c3aed; }
         
         .month-divider { background: var(--header-bg); color: white; font-weight: bold; font-size: 12px; text-transform: uppercase; text-align: left; padding: 12px !important; cursor: pointer; border: 1px solid var(--primary); }
 
-        /* TABLA CON LÍNEAS VISIBLES */
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid var(--border); }
-        th { background: #cbd5e1; text-align: left; padding: 12px; border: 1px solid var(--border); color: #0f172a; font-weight: 800; }
-        body.dark-mode th { background: #334155; color: white; }
-        td { padding: 12px; border: 1px solid var(--border); vertical-align: middle; background: var(--card-bg); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { text-align: left; padding: 12px; border: 1px solid var(--border); background: rgba(0,0,0,0.05); color: var(--text-main); font-weight: 800; }
+        body.dark-mode th { background: rgba(255,255,255,0.05); }
+        td { padding: 12px; border: 1px solid var(--border); vertical-align: middle; }
         
         .payment-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
-        .circle { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; margin: auto; background: #f8fafc; color: #1e293b; font-weight: bold; }
-        .circle.checked { background: var(--success); border-color: #064e3b; color: white; }
-        .circle.x-mark { background: var(--danger); border-color: #7f1d1d; color: white; }
-        .circle.extra-fee { border-color: var(--warning); color: var(--warning); border-width: 3px; background: #fffbeb; }
+        .circle { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; margin: auto; background: var(--bg); color: var(--text-main); font-weight: bold; }
+        .circle.checked { background: var(--success); border-color: var(--success); color: white; }
+        .circle.x-mark { background: var(--danger); border-color: var(--danger); color: white; }
+        .circle.extra-fee { border-color: var(--warning); color: var(--warning); border-width: 3px; }
         .circle.add-week { border: 2px dashed var(--primary); color: var(--primary); font-size: 18px; }
         
         .date-label { font-size: 10px; color: var(--text-main); display: block; margin-top: 4px; font-weight: 800; }
-        .start-date-label { font-size: 11px; color: var(--danger); font-weight: 800; background: #fee2e2; padding: 2px 4px; border-radius: 4px; }
-        .modalidad-label { font-size: 10px; background: var(--text-main); color: var(--card-bg); padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .start-date-label { font-size: 11px; color: var(--danger); font-weight: 800; background: rgba(185, 28, 28, 0.1); padding: 2px 4px; border-radius: 4px; }
+        .modalidad-label { font-size: 10px; background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -118,7 +119,7 @@
             <tr>
                 <th>CLIENTE / INFO</th>
                 <th>DEUDA</th>
-                <th>CRONOGRAMA DE PAGOS</th>
+                <th>PAGOS</th>
                 <th>ACCIONES</th>
             </tr>
         </thead>
@@ -211,8 +212,8 @@
         if (!confirm("¿Confirmar guardado en la nube?")) return;
         try {
             await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
-            alert("✅ Cambios guardados en Google Sheets.");
-        } catch (e) { alert("❌ Error de conexión."); }
+            alert("✅ Cambios guardados.");
+        } catch (e) { alert("❌ Error."); }
     }
 
     async function cargarDeNube(silencioso = false) {
@@ -223,9 +224,9 @@
                 prestamos = data.prestamos || [];
                 capitalTotal = parseFloat(data.capital) || 0;
                 actualizarUI();
-                if(!silencioso) alert("✅ Datos sincronizados correctamente.");
+                if(!silencioso) alert("✅ Datos sincronizados.");
             }
-        } catch (e) { if(!silencioso) alert("❌ Error al cargar datos."); }
+        } catch (e) { if(!silencioso) alert("❌ Error."); }
     }
 
     function procesarPrestamo() {
@@ -241,7 +242,7 @@
         const mod = document.getElementById('modalidad').value;
         const sem = parseInt(document.getElementById('semanas').value) || 2;
         const fec = document.getElementById('fechaInicio').value;
-        if (!nom || isNaN(mon) || !fec) { alert("Faltan datos obligatorios."); return; }
+        if (!nom || isNaN(mon) || !fec) return;
         const total = mon + (mon * (por / 100));
         const numCuotas = (mod === 'quincenal') ? 2 : sem;
         const cuota = total / numCuotas;
@@ -256,7 +257,7 @@
     }
 
     function prepararEdicion(id) {
-        if (prompt("Clave de seguridad:") !== CONTRASENA_ADMIN) return;
+        if (prompt("Clave:") !== CONTRASENA_ADMIN) return;
         const p = prestamos.find(x => x.id === id);
         editandoID = id;
         document.getElementById('nombre').value = p.nombre;
@@ -292,7 +293,7 @@
 
     function eliminar(pId) {
         const p = prestamos.find(x => x.id === pId);
-        if (prompt("Clave para eliminar:") === CONTRASENA_ADMIN) {
+        if (prompt("Clave:") === CONTRASENA_ADMIN) {
             capitalTotal += p.montoOriginal;
             p.pagos.forEach(pago => { if (pago.estado === 1) capitalTotal -= pago.valor; });
             prestamos = prestamos.filter(x => x.id !== pId);
@@ -357,9 +358,7 @@
             });
             circs += `<div class="circle add-week" onclick="agregarSemana(${p.id})">+</div></div>`;
 
-            const modTag = p.modalidad === 'quincenal' ? '<span class="modalidad-label">15/30 DIAS</span>' : '<span class="modalidad-label">SEMANAL</span>';
-
-            tr.innerHTML = `<td><strong style="font-size:1.1em;">${p.nombre}</strong> ${modTag}<br><span class="start-date-label">INICIO: ${p.fechaInicio}</span><br><a href="https://wa.me/593${p.celular}" target="_blank" style="color:var(--primary); font-size:12px; font-weight:bold; text-decoration:none;">📱 ENVIAR WHATSAPP</a></td>
+            tr.innerHTML = `<td><strong style="font-size:1.1em;">${p.nombre}</strong> <span class="modalidad-label">${p.modalidad.toUpperCase()}</span><br><span class="start-date-label">INICIO: ${p.fechaInicio}</span><br><a href="https://wa.me/593${p.celular}" target="_blank" style="color:var(--primary); font-size:12px; font-weight:bold; text-decoration:none;">📱 WHATSAPP</a></td>
                 <td><small>CUOTA: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong style="font-size:1.2em;">TOTAL: $${p.totalCobrar.toFixed(2)}</strong></td>
                 <td>${circs}</td>
                 <td>
