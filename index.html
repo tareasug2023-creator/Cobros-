@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Auto-relleno Corregido</title>
+    <title>Prestamos CC - Meses Desplegables</title>
     <style>
         :root { 
             --primary: #3b82f6; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; 
@@ -37,7 +37,21 @@
         .btn-cloud { background-color: #059669; }
         .btn-update-nube { background-color: #7c3aed; }
         
-        .month-divider { background: var(--border); color: var(--text-dim); font-weight: bold; font-size: 11px; text-transform: uppercase; text-align: center; padding: 8px !important; }
+        /* Estilos del Divisor Desplegable */
+        .month-divider { 
+            background: var(--border); 
+            color: var(--text-dim); 
+            font-weight: bold; 
+            font-size: 11px; 
+            text-transform: uppercase; 
+            text-align: center; 
+            padding: 10px !important; 
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .month-divider:hover { background: var(--primary); color: white; }
+        .month-divider span { float: right; margin-right: 10px; font-size: 14px; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: var(--text-dim); }
@@ -119,6 +133,7 @@
     let capitalTotal = 0;
     let prestamos = [];
     let editandoID = null;
+    let mesesColapsados = {}; // Para guardar qué meses están cerrados
 
     function cambiarModalidad() {
         const mod = document.getElementById('modalidad').value;
@@ -131,29 +146,22 @@
         }
     }
 
-    // --- CORRECCIÓN DE AUTO-RELLENO ---
     function autoRellenar() {
         if (editandoID) return;
         const bus = document.getElementById('nombre').value.toLowerCase().trim();
         if (bus.length < 2) return;
-        
         const c = prestamos.find(p => p.nombre.toLowerCase().includes(bus));
-        
         if (c) {
             document.getElementById('celular').value = c.celular || "";
             document.getElementById('monto').value = c.montoOriginal || "";
             document.getElementById('porcentaje').value = c.porcentajeOriginal || 0;
-            
-            // Ajustar modalidad y visibilidad del campo semanas
-            const modSelect = document.getElementById('modalidad');
-            modSelect.value = c.modalidad || 'semanal';
-            
-            cambiarModalidad(); // Actualiza si se ve o no el campo semanas
-            
-            if (modSelect.value === 'semanal') {
-                document.getElementById('semanas').value = c.numSemanasOriginales || "";
-            }
         }
+    }
+
+    // Función para contraer/expandir meses
+    function toggleMes(mesId) {
+        mesesColapsados[mesId] = !mesesColapsados[mesId];
+        renderizarTabla();
     }
 
     function ajustarCapitalConClave() {
@@ -349,15 +357,25 @@
         const tbody = document.getElementById('cuerpoTabla');
         tbody.innerHTML = "";
         let ultimoMes = "";
+        
         prestamos.forEach(p => {
             const fObj = new Date(p.fechaInicio + "T00:00:00");
-            const mesStr = fObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-            if (mesStr !== ultimoMes) {
+            const mesId = fObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            
+            if (mesId !== ultimoMes) {
                 const trMes = document.createElement('tr');
-                trMes.innerHTML = `<td colspan="4" class="month-divider">${mesStr}</td>`;
+                const estaCerrado = mesesColapsados[mesId];
+                const icono = estaCerrado ? "🔽" : "🔼";
+                trMes.innerHTML = `<td colspan="4" class="month-divider" onclick="toggleMes('${mesId}')">
+                    ${mesId} <span>${icono}</span>
+                </td>`;
                 tbody.appendChild(trMes);
-                ultimoMes = mesStr;
+                ultimoMes = mesId;
             }
+
+            // Si el mes está colapsado, no mostramos el préstamo
+            if (mesesColapsados[mesId]) return;
+
             const tr = document.createElement('tr');
             let circs = '<div class="payment-scroll">';
             
@@ -389,11 +407,6 @@
                 </td>`;
             tbody.appendChild(tr);
         });
-    }
-
-    function actualizarCapitalManual() {
-        capitalTotal = parseFloat(document.getElementById('capitalGlobal').value) || 0;
-        actualizarUI();
     }
 </script>
 </body>
