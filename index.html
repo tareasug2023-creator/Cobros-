@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Modalidad Dual</title>
+    <title>Prestamos CC - Auto-relleno Corregido</title>
     <style>
         :root { 
             --primary: #3b82f6; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; 
@@ -92,7 +92,7 @@
         <input type="number" id="porcentaje" placeholder="Interés %">
         <select id="modalidad" onchange="cambiarModalidad()">
             <option value="semanal">Cobro Semanal</option>
-            <option value="quincenal">Cobro Quincenal (15 y fin de mes)</option>
+            <option value="quincenal">Cobro Quincenal (15 y 30 días)</option>
         </select>
         <input type="number" id="semanas" placeholder="Número de Semanas" min="1">
         <input type="date" id="fechaInicio">
@@ -125,17 +125,41 @@
         const semInput = document.getElementById('semanas');
         if (mod === 'quincenal') {
             semInput.style.display = 'none';
-            semInput.value = 2; // Siempre 2 pagos
+            semInput.value = 2; 
         } else {
             semInput.style.display = 'block';
-            semInput.value = "";
+        }
+    }
+
+    // --- CORRECCIÓN DE AUTO-RELLENO ---
+    function autoRellenar() {
+        if (editandoID) return;
+        const bus = document.getElementById('nombre').value.toLowerCase().trim();
+        if (bus.length < 2) return;
+        
+        const c = prestamos.find(p => p.nombre.toLowerCase().includes(bus));
+        
+        if (c) {
+            document.getElementById('celular').value = c.celular || "";
+            document.getElementById('monto').value = c.montoOriginal || "";
+            document.getElementById('porcentaje').value = c.porcentajeOriginal || 0;
+            
+            // Ajustar modalidad y visibilidad del campo semanas
+            const modSelect = document.getElementById('modalidad');
+            modSelect.value = c.modalidad || 'semanal';
+            
+            cambiarModalidad(); // Actualiza si se ve o no el campo semanas
+            
+            if (modSelect.value === 'semanal') {
+                document.getElementById('semanas').value = c.numSemanasOriginales || "";
+            }
         }
     }
 
     function ajustarCapitalConClave() {
-        const pass = prompt("Contraseña para modificar el capital:");
+        const pass = prompt("Contraseña:");
         if (pass === CONTRASENA_ADMIN) {
-            const nuevoCap = prompt("Nuevo capital disponible:", capitalTotal.toFixed(2));
+            const nuevoCap = prompt("Nuevo capital:", capitalTotal.toFixed(2));
             if (nuevoCap !== null && !isNaN(parseFloat(nuevoCap))) {
                 capitalTotal = parseFloat(nuevoCap);
                 actualizarUI();
@@ -169,7 +193,6 @@
                 } else {
                     fPago.setDate(fPago.getDate() + ((idx + 1) * 7));
                 }
-                
                 if (pago.estado === 1) {
                     let g = (pago.tipo === 'extra') ? 5 : gananciaPorCuota;
                     total += g;
@@ -182,10 +205,10 @@
     }
 
     async function guardarEnNube() {
-        if (!confirm("¿Guardar cambios en la nube?")) return;
+        if (!confirm("¿Guardar cambios?")) return;
         try {
             await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
-            alert("✅ Datos guardados.");
+            alert("✅ Guardado.");
         } catch (e) { alert("❌ Error."); }
     }
 
@@ -197,7 +220,7 @@
                 prestamos = data.prestamos || [];
                 capitalTotal = parseFloat(data.capital) || 0;
                 actualizarUI();
-                if(!silencioso) alert("✅ Datos sincronizados.");
+                if(!silencioso) alert("✅ Sincronizado.");
             }
         } catch (e) { if(!silencioso) alert("❌ Error."); }
     }
@@ -300,6 +323,7 @@
         renderizarTabla();
         calcularGanancias();
         ["nombre", "celular", "monto", "porcentaje", "semanas", "fechaInicio"].forEach(id => document.getElementById(id).value = "");
+        cambiarModalidad(); 
     }
 
     function togglePago(pId, index) {
@@ -310,21 +334,6 @@
         if (pago.estado === 1) capitalTotal += pago.valor;
         else if (ant === 1) capitalTotal -= pago.valor;
         actualizarUI();
-    }
-
-    function autoRellenar() {
-        if (editandoID) return;
-        const bus = document.getElementById('nombre').value.toLowerCase().trim();
-        if (bus.length < 2) return;
-        const c = prestamos.find(p => p.nombre.toLowerCase().includes(bus));
-        if (c) {
-            document.getElementById('celular').value = c.celular;
-            document.getElementById('monto').value = c.montoOriginal;
-            document.getElementById('porcentaje').value = c.porcentajeOriginal;
-            document.getElementById('modalidad').value = c.modalidad || 'semanal';
-            document.getElementById('semanas').value = c.numSemanasOriginales;
-            cambiarModalidad();
-        }
     }
 
     function agregarSemana(pId) {
@@ -380,6 +389,11 @@
                 </td>`;
             tbody.appendChild(tr);
         });
+    }
+
+    function actualizarCapitalManual() {
+        capitalTotal = parseFloat(document.getElementById('capitalGlobal').value) || 0;
+        actualizarUI();
     }
 </script>
 </body>
