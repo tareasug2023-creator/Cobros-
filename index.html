@@ -3,369 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Administrador Total</title>
+    <title>Estado de mi Préstamo | Prestamos CC</title>
     <style>
         :root { 
-            --primary: #1e40af; --success: #15803d; --danger: #b91c1c; --warning: #b45309; 
-            --bg: #f1f5f9; --card-bg: #ffffff; --text-main: #0f172a; --text-dim: #334155;
-            --input-bg: #ffffff; --border: #94a3b8; --header-bg: #0f172a;
+            --primary: #1e40af; 
+            --success: #15803d; 
+            --danger: #ef4444;
+            --warning: #b45309; /* Ámbar oscuro */
+            --bg: #f8fafc; 
+            --text: #1e293b; 
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        
+        .card { width: 100%; max-width: 420px; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; text-align: center; }
+        
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .info-box { background: #f1f5f9; padding: 15px; border-radius: 12px; margin: 20px 0; border: 1px solid #e2e8f0; text-align: left; }
+        .grid-pagos { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 15px; }
+        
+        .circle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; transition: 0.3s; position: relative; color: #64748b; background: white; }
+        
+        /* ESTADOS DE LOS CÍRCULOS (Marcados) */
+        .checked { background: var(--success) !important; border-color: var(--success) !important; color: white !important; }
+        .x-mark { background: var(--danger) !important; border-color: var(--danger) !important; color: white !important; }
+        
+        /* LÓGICA DE MULTAS (REGLA ACTUALIZADA) */
+        .extra-fee { border-color: var(--warning); color: var(--warning); border-width: 3px; background: #fffbeb; }
+        
+        /* Cuando la multa está PAGADA, se rellena de AMARILLO */
+        .extra-fee.checked { 
+            background: var(--warning) !important; 
+            border-color: var(--warning) !important; 
+            color: white !important; 
         }
 
-        body.dark-mode { 
-            --bg: #020617; --card-bg: #0f172a; --text-main: #f8fafc; --text-dim: #cbd5e1;
-            --input-bg: #1e293b; --border: #334155; --header-bg: #020617;
-        }
+        .multa-tag { font-size: 9px; position: absolute; bottom: -18px; color: var(--warning); font-weight: 800; text-transform: uppercase; }
 
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 20px; color: var(--text-main); transition: 0.3s; }
-        .container { max-width: 1300px; margin: auto; background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); border: 1px solid var(--border); }
-        .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary); padding-bottom: 20px; margin-bottom: 20px; }
+        .legend { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 25px; font-size: 12px; font-weight: 600; padding: 15px; border-top: 1px dashed #cbd5e1; }
+        .legend-item { display: flex; align-items: center; gap: 8px; justify-content: flex-start; padding-left: 10px; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; }
         
-        .theme-toggle { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .warning-box { background: #fffbeb; border: 1px solid #fef3c7; color: #92400e; padding: 12px; border-radius: 10px; font-size: 12px; margin-top: 25px; line-height: 1.4; font-weight: 500; text-align: left; }
 
-        .capital-section { background: var(--header-bg); color: white; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--primary); }
-        .capital-section input { background: transparent; color: #4ade80; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
-        .btn-ajuste-cap { display: block; margin-top: 5px; font-size: 11px; color: #60a5fa; cursor: pointer; text-decoration: underline; font-weight: bold; }
-
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); border-left: 8px solid var(--primary); }
-        .stat-card h4 { margin: 0; color: var(--text-dim); font-size: 0.9em; text-transform: uppercase; }
-        .stat-card p { margin: 5px 0 0; font-size: 1.4em; font-weight: bold; color: var(--primary); }
-
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #e2e8f0; padding: 20px; border-radius: 8px; border: 2px solid var(--border); }
-        body.dark-mode .form-grid { background: #1e293b; }
-        
-        input, select { padding: 12px; background: var(--input-bg); border: 2px solid var(--border); border-radius: 6px; font-size: 14px; color: var(--text-main); font-weight: 500; width: 100%; box-sizing: border-box; }
-        button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; text-transform: uppercase; transition: 0.2s; }
-        .btn-cloud { background-color: var(--success); }
-
-        .month-divider { background: var(--header-bg); color: white; font-weight: bold; font-size: 12px; text-transform: uppercase; text-align: left; padding: 12px !important; cursor: pointer; border: 1px solid var(--primary); }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid var(--border); }
-        th { background: #cbd5e1; text-align: left; padding: 12px; border: 1px solid var(--border); color: #0f172a; font-weight: 800; }
-        body.dark-mode th { background: #334155; color: white; }
-        td { padding: 12px; border: 1px solid var(--border); vertical-align: middle; background: var(--card-bg); }
-        
-        .payment-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
-        .circle-container { position: relative; text-align: center; min-width: 45px; }
-        .circle { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; margin: auto; background: #f8fafc; color: #1e293b; font-weight: bold; }
-        
-        .circle.checked { background: var(--success) !important; border-color: #064e3b !important; color: white !important; }
-        .circle.x-mark { background: var(--danger) !important; border-color: #7f1d1d !important; color: white !important; }
-        .circle.extra-fee { border-color: var(--warning); color: var(--warning); border-width: 3px; background: #fffbeb; }
-        .circle.extra-fee.checked { background: var(--warning) !important; border-color: var(--warning) !important; color: white !important; }
-
-        .del-multa { position: absolute; top: -8px; right: -2px; background: var(--danger); color: white; width: 18px; height: 18px; border-radius: 50%; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; border: 1px solid white; font-weight: bold; z-index: 5; }
-        
-        .circle.add-week { border: 2px dashed var(--primary); color: var(--primary); font-size: 18px; background: transparent; }
-        
-        .date-label { font-size: 10px; color: var(--text-main); display: block; margin-top: 4px; font-weight: 800; }
-        .start-date-label { font-size: 11px; color: var(--danger); font-weight: 800; background: #fee2e2; padding: 2px 4px; border-radius: 4px; }
-        .modalidad-label { font-size: 10px; background: var(--text-main); color: var(--card-bg); padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        h2 { margin: 0 0 15px 0; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        .monto-grande { font-size: 24px; font-weight: 800; color: var(--text); }
     </style>
 </head>
 <body>
 
-<button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙</button>
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <p>Sincronizando con el servidor...</p>
+    </div>
 
-<div class="container">
-    <div class="header-box">
-        <h2 style="color: var(--primary)">💲 Prestamos CC</h2>
-        <div class="capital-section">
-            CAPITAL DISPONIBLE<br>
-            $ <input type="number" id="capitalGlobal" step="0.01" value="0.00" readonly>
-            <span class="btn-ajuste-cap" onclick="ajustarCapitalConClave()">Ajustar Capital (Clave)</span>
+    <div id="content" class="card" style="display:none;">
+        <h2 id="nombreCliente">Cargando...</h2>
+        
+        <div class="info-box">
+            <div style="font-size: 13px; color: #64748b; margin-bottom: 5px;">📍 <strong>Fecha Inicio:</strong> <span id="fechaInicio"></span></div>
+            <div class="monto-grande" id="totalDeuda">$0.00</div>
+            <div style="font-size: 14px; color: #64748b;">Cuota por periodo: <span id="valorCuota" style="font-weight: bold; color: var(--text);">$0.00</span></div>
         </div>
-    </div>
 
-    <div class="stats-grid">
-        <div class="stat-card"><h4>Ganancia Total</h4><p id="gananciaTotal">$ 0.00</p></div>
-        <div class="stat-card"><h4>Ganancia Mes</h4><p id="gananciaMes">$ 0.00</p></div>
-    </div>
-
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-        <button onclick="guardarEnNube()" class="btn-cloud">☁️ Guardar Cambios</button>
-        <button onclick="cargarDeNube()" style="background:#6d28d9">🔄 Actualizar Datos</button>
-    </div>
-
-    <div class="form-grid" id="mainForm">
-        <input type="text" id="nombre" placeholder="Nombre Cliente" onkeyup="autoRellenar()">
-        <input type="text" id="celular" placeholder="Celular" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)">
-        <input type="number" id="monto" placeholder="Monto $">
-        <input type="number" id="porcentaje" placeholder="Interés %">
-        <select id="modalidad" onchange="cambiarModalidad()">
-            <option value="semanal">Cobro Semanal</option>
-            <option value="quincenal">Cobro Quincenal (15/30)</option>
-        </select>
-        <input type="number" id="semanas" placeholder="Semanas" min="1">
-        <input type="date" id="fechaInicio">
-        <button id="btnRegistrar" onclick="procesarPrestamo()">Registrar Préstamo</button>
-    </div>
-
-    <table>
-        <thead>
-            <tr>
-                <th>CLIENTE / INFO</th>
-                <th>DEUDA</th>
-                <th>PAGOS</th>
-                <th>ACCIONES</th>
-            </tr>
-        </thead>
-        <tbody id="cuerpoTabla"></tbody>
-    </table>
-</div>
-
-<script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbygxcelqlUOJBIWQlBsdIQ29Dg-O857xEgGYhHk_NYzcikTefoSEp4VRGlhtVO245RodQ/exec"; 
-    const CONTRASENA_ADMIN = "Suki24"; 
-
-    let capitalTotal = 0;
-    let prestamos = [];
-    let editandoID = null;
-    let mesesColapsados = {};
-
-    function cambiarModalidad() {
-        const mod = document.getElementById('modalidad').value;
-        document.getElementById('semanas').style.display = (mod === 'quincenal') ? 'none' : 'block';
-    }
-
-    function autoRellenar() {
-        if (editandoID) return;
-        const bus = document.getElementById('nombre').value.toLowerCase().trim();
-        if (bus.length < 2) return;
-        const c = prestamos.find(p => p.nombre.toLowerCase().includes(bus));
-        if (c) {
-            document.getElementById('celular').value = c.celular || "";
-            document.getElementById('monto').value = c.montoOriginal || "";
-            document.getElementById('porcentaje').value = c.porcentajeOriginal || 0;
-        }
-    }
-
-    function toggleMes(mesId) {
-        mesesColapsados[mesId] = !mesesColapsados[mesId];
-        renderizarTabla();
-    }
-
-    function ajustarCapitalConClave() {
-        if (prompt("Ingrese clave:") === CONTRASENA_ADMIN) {
-            const n = prompt("Nuevo capital disponible:", capitalTotal.toFixed(2));
-            if (n) { capitalTotal = parseFloat(n); actualizarUI(); }
-        }
-    }
-
-    async function guardarEnNube() {
-        if (!confirm("¿Confirmar guardado?")) return;
-        try {
-            await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
-            alert("✅ Cambios guardados.");
-        } catch (e) { alert("❌ Error."); }
-    }
-
-    async function cargarDeNube(silencioso = false) {
-        try {
-            const response = await fetch(WEB_APP_URL);
-            const data = await response.json();
-            if (data) {
-                prestamos = data.prestamos || [];
-                capitalTotal = parseFloat(data.capital) || 0;
-                actualizarUI();
-                if(!silencioso) alert("✅ Sincronizado correctamente.");
-            }
-        } catch (e) { if(!silencioso) alert("❌ Error."); }
-    }
-
-    function procesarPrestamo() {
-        if (editandoID) finalizarEdicion();
-        else agregarPrestamo();
-    }
-
-    function agregarPrestamo() {
-        const nom = document.getElementById('nombre').value;
-        const mon = parseFloat(document.getElementById('monto').value);
-        const por = parseFloat(document.getElementById('porcentaje').value) || 0;
-        const mod = document.getElementById('modalidad').value;
-        const sem = parseInt(document.getElementById('semanas').value) || 2;
-        const fec = document.getElementById('fechaInicio').value;
-        if (!nom || isNaN(mon) || !fec) return;
-        const total = mon + (mon * (por / 100));
-        const nCuotas = (mod === 'quincenal') ? 2 : sem;
-        const cuota = total / nCuotas;
-        prestamos.push({
-            id: Date.now(), nombre: nom, celular: document.getElementById('celular').value,
-            totalCobrar: total, valorCuotaOriginal: cuota, montoOriginal: mon,
-            numSemanasOriginales: sem, fechaInicio: fec, modalidad: mod, porcentajeOriginal: por,
-            pagos: Array.from({length: nCuotas}, () => ({ tipo: 'normal', estado: 0, valor: cuota }))
-        });
-        capitalTotal -= mon;
-        actualizarUI();
-    }
-
-    function prepararEdicion(id) {
-        if (prompt("Clave de seguridad:") !== CONTRASENA_ADMIN) return;
-        const p = prestamos.find(x => x.id === id);
-        editandoID = id;
-        document.getElementById('nombre').value = p.nombre;
-        document.getElementById('celular').value = p.celular;
-        document.getElementById('monto').value = p.montoOriginal;
-        document.getElementById('porcentaje').value = p.porcentajeOriginal;
-        document.getElementById('modalidad').value = p.modalidad || 'semanal';
-        document.getElementById('semanas').value = p.numSemanasOriginales;
-        document.getElementById('fechaInicio').value = p.fechaInicio;
-        document.getElementById('btnRegistrar').innerText = "Guardar Cambios";
-        cambiarModalidad();
-        window.scrollTo(0, 0);
-    }
-
-    function finalizarEdicion() {
-        const p = prestamos.find(x => x.id === editandoID);
-        const monNuevo = parseFloat(document.getElementById('monto').value);
-        capitalTotal += (p.montoOriginal - monNuevo);
-        p.nombre = document.getElementById('nombre').value;
-        p.celular = document.getElementById('celular').value;
-        p.montoOriginal = monNuevo;
-        p.porcentajeOriginal = parseFloat(document.getElementById('porcentaje').value) || 0;
-        p.modalidad = document.getElementById('modalidad').value;
-        p.numSemanasOriginales = parseInt(document.getElementById('semanas').value) || 2;
-        p.fechaInicio = document.getElementById('fechaInicio').value;
+        <div style="font-size: 13px; font-weight: 800; margin-top: 25px; text-transform: uppercase; letter-spacing: 1px; color: #475569;">Mis Pagos Registrados</div>
         
-        const nT = p.montoOriginal + (p.montoOriginal * (p.porcentajeOriginal / 100));
-        const nC = (p.modalidad === 'quincenal') ? 2 : p.numSemanasOriginales;
-        p.totalCobrar = nT; p.valorCuotaOriginal = nT / nC;
-        p.pagos = Array.from({length: nC}, () => ({ tipo: 'normal', estado: 0, valor: p.valorCuotaOriginal }));
-        
-        editandoID = null;
-        document.getElementById('btnRegistrar').innerText = "Registrar Préstamo";
-        actualizarUI();
-    }
+        <div class="grid-pagos" id="contenedorPagos"></div>
 
-    function eliminarPrestamo(id) {
-        if (prompt("Clave para eliminar:") === CONTRASENA_ADMIN) {
-            const p = prestamos.find(x => x.id === id);
-            capitalTotal += p.montoOriginal;
-            prestamos = prestamos.filter(x => x.id !== id);
-            actualizarUI();
-        }
-    }
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background:var(--success)"></div> Pagada</div>
+            <div class="legend-item"><div class="dot" style="background:var(--danger)"></div> Atrasada</div>
+            <div class="legend-item"><div class="dot" style="border: 2px solid #cbd5e1; background: white;"></div> Pendiente</div>
+            <div class="legend-item"><div class="dot" style="background:var(--warning)"></div> Multa Pagada</div>
+        </div>
 
-    function borrarMulta(pId, index) {
-        if (confirm("¿Eliminar esta multa de $5.00?")) {
-            const p = prestamos.find(x => x.id === pId);
-            if (p.pagos[index].estado === 1) capitalTotal -= 5;
-            p.totalCobrar -= 5;
-            p.pagos.splice(index, 1);
-            actualizarUI();
-        }
-    }
+        <div class="warning-box">
+            ⚠️ <strong>Recordatorio importante:</strong><br>
+            Una vez culminado los días de su préstamo se le cobrara una multa de $5.00 por la espera de otra semana.
+        </div>
 
-    function togglePago(pId, index) {
-        const p = prestamos.find(x => x.id === pId);
-        const pago = p.pagos[index];
-        const ant = pago.estado;
-        pago.estado = (pago.estado + 1) % 3;
-        if (pago.estado === 1) capitalTotal += pago.valor;
-        else if (ant === 1) capitalTotal -= pago.valor;
-        actualizarUI();
-    }
+        <p style="font-size: 10px; color: #94a3b8; margin-top: 30px; font-style: italic;">
+            Este panel se actualiza automáticamente según los registros del administrador.
+        </p>
+    </div>
 
-    function agregarMulta(pId) {
-        if (confirm("¿Agregar multa de $5.00?")) {
-            const p = prestamos.find(x => x.id === pId);
-            p.totalCobrar += 5;
-            p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
-            actualizarUI();
-        }
-    }
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbygxcelqlUOJBIWQlBsdIQ29Dg-O857xEgGYhHk_NYzcikTefoSEp4VRGlhtVO245RodQ/exec";
+        const params = new URLSearchParams(window.location.search);
+        const idBuscado = params.get('id');
 
-    function actualizarUI() {
-        document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
-        prestamos.sort((a, b) => new Date(a.fechaInicio + "T00:00:00") - new Date(b.fechaInicio + "T00:00:00"));
-        renderizarTabla();
-        calcularGanancias();
-        ["nombre", "celular", "monto", "porcentaje", "semanas", "fechaInicio"].forEach(id => document.getElementById(id).value = "");
-    }
-
-    function renderizarTabla() {
-        const tbody = document.getElementById('cuerpoTabla');
-        tbody.innerHTML = "";
-        let ultimoMes = "";
-
-        prestamos.forEach(p => {
-            const fObj = new Date(p.fechaInicio + "T00:00:00");
-            const mesId = fObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-            if (mesId !== ultimoMes) {
-                const trM = document.createElement('tr');
-                const icono = mesesColapsados[mesId] ? "🔽" : "🔼";
-                trM.innerHTML = `<td colspan="4" class="month-divider" onclick="toggleMes('${mesId}')">${mesId.toUpperCase()} <span style="float:right;">${icono}</span></td>`;
-                tbody.appendChild(trM);
-                ultimoMes = mesId;
+        async function obtenerDatos() {
+            if (!idBuscado) {
+                document.body.innerHTML = "<h3>Error: Enlace no válido</h3>";
+                return;
             }
-            if (mesesColapsados[mesId]) return;
 
-            const tr = document.createElement('tr');
-            let circs = '<div class="payment-scroll">';
-            p.pagos.forEach((pago, i) => {
-                let fP = new Date(p.fechaInicio + "T00:00:00");
-                if (p.modalidad === 'quincenal') fP.setDate(fP.getDate() + (i === 0 ? 15 : 30));
-                else fP.setDate(fP.getDate() + ((i + 1) * 7));
-                
-                const esMulta = pago.tipo === 'extra';
-                circs += `
-                    <div class="circle-container">
-                        ${esMulta ? `<div class="del-multa" onclick="borrarMulta(${p.id}, ${i})">×</div>` : ''}
-                        <div class="circle ${pago.estado === 1 ? 'checked' : (pago.estado === 2 ? 'x-mark' : '')} ${esMulta ? 'extra-fee' : ''}" 
-                             onclick="togglePago(${p.id}, ${i})">${i + 1}</div>
-                        <span class="date-label">${fP.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}</span>
-                    </div>`;
-            });
-            circs += `<div class="circle add-week" onclick="agregarMulta(${p.id})">+</div></div>`;
+            try {
+                const respuesta = await fetch(WEB_APP_URL);
+                const data = await respuesta.json();
+                const prestamo = data.prestamos.find(p => p.id == idBuscado);
 
-            let linkL = `https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
+                if (prestamo) {
+                    document.getElementById('nombreCliente').innerText = prestamo.nombre;
+                    document.getElementById('fechaInicio').innerText = prestamo.fechaInicio;
+                    document.getElementById('totalDeuda').innerText = "Deuda Total: $" + prestamo.totalCobrar.toFixed(2);
+                    document.getElementById('valorCuota').innerText = "$" + prestamo.valorCuotaOriginal.toFixed(2);
+                    
+                    const contenedor = document.getElementById('contenedorPagos');
+                    prestamo.pagos.forEach((pago, index) => {
+                        const divWrap = document.createElement('div');
+                        divWrap.style.marginBottom = "22px";
+                        divWrap.style.display = "flex";
+                        divWrap.style.flexDirection = "column";
+                        divWrap.style.alignItems = "center";
 
-            tr.innerHTML = `
-                <td>
-                    <strong style="font-size:1.1em;">${p.nombre}</strong> <span class="modalidad-label">${p.modalidad.toUpperCase()}</span><br>
-                    <span class="start-date-label">INICIO: ${p.fechaInicio}</span><br>
-                    <a href="https://wa.me/593${p.celular}" target="_blank" style="color:var(--primary); font-size:12px; font-weight:bold; text-decoration:none;">📱 WHATSAPP</a>
-                </td>
-                <td><small>CUOTA: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong>TOTAL: $${p.totalCobrar.toFixed(2)}</strong></td>
-                <td>${circs}</td>
-                <td>
-                    <button onclick="prepararEdicion(${p.id})" style="background:none; color:var(--warning); text-decoration:underline; font-size:11px; border:none; cursor:pointer; font-weight:bold;">EDITAR</button><br>
-                    <button onclick="eliminarPrestamo(${p.id})" style="background:none; color:var(--danger); text-decoration:underline; font-size:11px; border:none; cursor:pointer; font-weight:bold;">BORRAR</button><br>
-                    <button onclick="navigator.clipboard.writeText('${linkL}').then(()=>alert('Copiado'))" style="background:none; color:var(--success); text-decoration:underline; font-size:11px; border:none; cursor:pointer; font-weight:bold;">🔗 LINK</button>
-                </td>`;
-            tbody.appendChild(tr);
-        });
-    }
+                        const div = document.createElement('div');
+                        div.className = 'circle';
+                        
+                        // LÓGICA DE MULTA
+                        const esMulta = (pago.tipo === 'extra' || pago.valor === 5);
+                        if (esMulta) {
+                            div.classList.add('extra-fee');
+                            const label = document.createElement('span');
+                            label.className = 'multa-tag';
+                            label.innerText = 'Multa';
+                            divWrap.appendChild(label);
+                        }
 
-    function toggleTheme() {
-        document.body.classList.toggle('dark-mode');
-        const isDark = document.body.classList.contains('dark-mode');
-        document.getElementById('themeBtn').innerText = isDark ? "☀️" : "🌙";
-    }
+                        // LÓGICA DE ESTADO (Pagado o X)
+                        if (pago.estado === 1) div.classList.add('checked');
+                        if (pago.estado === 2) div.classList.add('x-mark');
+                        
+                        div.innerText = index + 1;
+                        divWrap.prepend(div);
+                        contenedor.appendChild(divWrap);
+                    });
 
-    function calcularGanancias() {
-        let total = 0; let mes = 0;
-        const ahora = new Date();
-        prestamos.forEach(p => {
-            const numCuotas = p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales;
-            const gananciaPorCuota = (p.totalCobrar - p.montoOriginal) / (numCuotas || 1);
-            let fBase = new Date(p.fechaInicio + "T00:00:00");
-            p.pagos.forEach((pago, idx) => {
-                let fPago = new Date(fBase);
-                if (p.modalidad === 'quincenal') fPago.setDate(fPago.getDate() + (idx === 0 ? 15 : 30));
-                else fPago.setDate(fPago.getDate() + ((idx + 1) * 7));
-                if (pago.estado === 1) {
-                    let g = (pago.tipo === 'extra') ? 5 : gananciaPorCuota;
-                    total += g;
-                    if (fPago.getMonth() === ahora.getMonth() && fPago.getFullYear() === ahora.getFullYear()) mes += g;
+                    document.getElementById('loading-screen').style.display = 'none';
+                    document.getElementById('content').style.display = 'block';
+                } else {
+                    document.body.innerHTML = "<h3>Préstamo finalizado o no encontrado.</h3>";
                 }
-            });
-        });
-        document.getElementById('gananciaTotal').innerText = `$ ${total.toFixed(2)}`;
-        document.getElementById('gananciaMes').innerText = `$ ${mes.toFixed(2)}`;
-    }
-
-    window.onload = () => cargarDeNube(true);
-</script>
+            } catch (error) {
+                document.body.innerHTML = "<h3>Error de conexión con la nube.</h3>";
+            }
+        }
+        obtenerDatos();
+    </script>
 </body>
 </html>
