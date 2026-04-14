@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Panel Premium Total</title>
+    <title>Prestamos CC - Panel Premium Final</title>
     <style>
         :root { 
             --primary: #1e40af; --success: #15803d; --danger: #b91c1c; --warning: #b45309; 
@@ -25,7 +25,6 @@
         .capital-section { background: var(--header-bg); color: white; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--primary); }
         .capital-section input { background: transparent; color: #4ade80; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
         
-        /* NOTIFICACIONES */
         .notif-panel { background: #fffbeb; border: 2px solid #f59e0b; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: none; }
         body.dark-mode .notif-panel { background: #451a03; border-color: #f59e0b; color: white; }
         .notif-title { font-weight: 800; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
@@ -71,6 +70,8 @@
         .badge-quincenal { background: #ec4899; }
         .btn-action { background: none; border: none; font-size: 18px; cursor: pointer; padding: 5px; border-radius: 4px; }
         .btn-action:hover { background: rgba(0,0,0,0.1); }
+        .cuota-highlight { color: var(--primary); font-weight: 800; font-size: 1.1em; }
+        body.dark-mode .cuota-highlight { color: #60a5fa; }
     </style>
 </head>
 <body>
@@ -93,7 +94,7 @@
     </div>
 
     <div class="search-container">
-        <input type="text" id="busqueda" class="search-input" placeholder="🔍 Buscar cliente..." onkeyup="renderizarTabla()">
+        <input type="text" id="busqueda" class="search-input" placeholder="🔍 Buscar cliente por nombre..." onkeyup="renderizarTabla()">
     </div>
 
     <div class="stats-grid">
@@ -124,7 +125,7 @@
         <thead>
             <tr>
                 <th>CLIENTE / INFO</th>
-                <th width="150">ESTADO</th>
+                <th width="160">ESTADO / CUOTA</th>
                 <th>PAGOS</th>
                 <th>ACCIONES</th>
             </tr>
@@ -165,17 +166,17 @@
     }
 
     function ajustarCapitalConClave() {
-        if (prompt("Ingrese clave:") === CONTRASENA_ADMIN) {
+        if (prompt("Clave:") === CONTRASENA_ADMIN) {
             const n = prompt("Nuevo capital:", capitalTotal.toFixed(2));
             if (n) { capitalTotal = parseFloat(n); actualizarUI(); }
         }
     }
 
     async function guardarEnNube() {
-        if (!confirm("¿Confirmar guardado?")) return;
+        if (!confirm("¿Guardar?")) return;
         try {
             await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
-            alert("✅ Cambios guardados.");
+            alert("✅ Guardado.");
         } catch (e) { alert("❌ Error."); }
     }
 
@@ -187,7 +188,7 @@
                 prestamos = data.prestamos || [];
                 capitalTotal = parseFloat(data.capital) || 0;
                 actualizarUI();
-                if(!silencioso) alert("✅ Sincronizado.");
+                if(!silencioso) alert("✅ Cargado.");
             }
         } catch (e) { if(!silencioso) alert("❌ Error."); }
     }
@@ -221,17 +222,10 @@
     function enviarRecordatorio(id, monto) {
         const p = prestamos.find(x => x.id === id);
         const lectorLink = `https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
-        
-        // Limpieza de número de celular (quita el 0 inicial de Ecuador)
         let celFinal = p.celular;
         if (celFinal.startsWith('0')) celFinal = celFinal.substring(1);
-
-        const msg = `Hola ${p.nombre}, te saludamos de Prestamos CC. Te recordamos que hoy vence tu cuota de $${monto.toFixed(2)}. Puedes revisar tu estado actualizado aqui: ${lectorLink}`;
-        
-        const encodedMsg = encodeURIComponent(msg);
-        const url = `https://api.whatsapp.com/send?phone=593${celFinal}&text=${encodedMsg}`;
-        
-        window.open(url, '_blank');
+        const msg = `Hola ${p.nombre}, te saludamos de Prestamos CC. Recordamos que hoy vence tu cuota de $${monto.toFixed(2)}. Revisa tu estado aqui: ${lectorLink}`;
+        window.open(`https://api.whatsapp.com/send?phone=593${celFinal}&text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function prepararEdicion(id) {
@@ -336,11 +330,10 @@
                     let fP = new Date(p.fechaInicio + "T00:00:00");
                     if (p.modalidad === 'quincenal') fP.setDate(fP.getDate() + (i === 0 ? 15 : 30));
                     else fP.setDate(fP.getDate() + ((i + 1) * 7));
-                    
                     if (fP.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'}) === hoy) {
                         hoyCount++;
                         list.innerHTML += `<div class="notif-item">
-                            <span>👤 <b>${p.nombre}</b> - $${pago.valor.toFixed(2)}</span>
+                            <span>👤 <b>${p.nombre}</b> (Cuota: <b>$${pago.valor.toFixed(2)}</b>)</span>
                             <button class="btn-send-notif" onclick="enviarRecordatorio(${p.id}, ${pago.valor})">📲 COBRAR</button>
                         </div>`;
                     }
@@ -392,7 +385,8 @@
             <td>
                 <div style="font-size:10px; font-weight:bold;">PROGRESO: ${Math.round(porcentaje)}%</div>
                 <div class="progress-container"><div class="progress-bar" style="width:${porcentaje}%"></div></div>
-                <div style="font-size:12px; margin-top:5px;"><b>$${p.totalCobrar.toFixed(2)}</b></div>
+                <div style="margin-top:8px;">Cuota: <span class="cuota-highlight">$${p.valorCuotaOriginal.toFixed(2)}</span></div>
+                <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">Deuda: $${p.totalCobrar.toFixed(2)}</div>
             </td>
             <td>${circs}</td>
             <td><div style="display:flex; gap:5px;">
@@ -406,8 +400,7 @@
 
     function toggleTheme() {
         document.body.classList.toggle('dark-mode');
-        const isDark = document.body.classList.contains('dark-mode');
-        document.getElementById('themeBtn').innerText = isDark ? "☀️" : "🌙";
+        document.getElementById('themeBtn').innerText = document.body.classList.contains('dark-mode') ? "☀️" : "🌙";
     }
 
     function calcularGanancias() {
