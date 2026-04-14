@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Contraste Alto</title>
+    <title>Prestamos CC - Administrador</title>
     <style>
         /* PALETA DE COLORES MEJORADA PARA ALTO CONTRASTE */
         :root { 
@@ -57,7 +57,6 @@
         
         .month-divider { background: var(--header-bg); color: white; font-weight: bold; font-size: 12px; text-transform: uppercase; text-align: left; padding: 12px !important; cursor: pointer; border: 1px solid var(--primary); }
 
-        /* TABLA CON LÍNEAS VISIBLES */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid var(--border); }
         th { background: #cbd5e1; text-align: left; padding: 12px; border: 1px solid var(--border); color: #0f172a; font-weight: 800; }
         body.dark-mode th { background: #334155; color: white; }
@@ -65,9 +64,15 @@
         
         .payment-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
         .circle { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; margin: auto; background: #f8fafc; color: #1e293b; font-weight: bold; }
+        
+        /* ESTADOS DE LOS CÍRCULOS */
         .circle.checked { background: var(--success); border-color: #064e3b; color: white; }
         .circle.x-mark { background: var(--danger); border-color: #7f1d1d; color: white; }
+        
+        /* MULTAS CORREGIDAS */
         .circle.extra-fee { border-color: var(--warning); color: var(--warning); border-width: 3px; background: #fffbeb; }
+        .circle.extra-fee.checked { background: var(--warning) !important; border-color: var(--warning) !important; color: white !important; }
+        
         .circle.add-week { border: 2px dashed var(--primary); color: var(--primary); font-size: 18px; }
         
         .date-label { font-size: 10px; color: var(--text-main); display: block; margin-top: 4px; font-weight: 800; }
@@ -154,7 +159,7 @@
 
     function copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
-            alert("✅ Link de Lector copiado. Este enlace siempre mostrará la información actualizada.");
+            alert("✅ Link de Lector copiado. Siempre estará actualizado.");
         });
     }
 
@@ -190,12 +195,12 @@
         const ahora = new Date();
         prestamos.forEach(p => {
             const numCuotas = p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales;
-            const gananciaPorCuota = (p.totalCobrar - p.montoOriginal) / numCuotas;
+            const gananciaPorCuota = (p.totalCobrar - p.montoOriginal) / (numCuotas || 1);
             let fBase = new Date(p.fechaInicio + "T00:00:00");
             p.pagos.forEach((pago, idx) => {
                 let fPago = new Date(fBase);
-                if (p.modalidad === 'quincenal') { fPago.setDate(fPago.getDate() + (idx === 0 ? 15 : 30)); }
-                else { fPago.setDate(fPago.getDate() + ((idx + 1) * 7)); }
+                if (p.modalidad === 'quincenal') fPago.setDate(fPago.getDate() + (idx === 0 ? 15 : 30));
+                else fPago.setDate(fPago.getDate() + ((idx + 1) * 7));
                 if (pago.estado === 1) {
                     let g = (pago.tipo === 'extra') ? 5 : gananciaPorCuota;
                     total += g;
@@ -211,8 +216,8 @@
         if (!confirm("¿Confirmar guardado en la nube?")) return;
         try {
             await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
-            alert("✅ Cambios guardados en Google Sheets.");
-        } catch (e) { alert("❌ Error de conexión."); }
+            alert("✅ Cambios guardados.");
+        } catch (e) { alert("❌ Error."); }
     }
 
     async function cargarDeNube(silencioso = false) {
@@ -223,9 +228,9 @@
                 prestamos = data.prestamos || [];
                 capitalTotal = parseFloat(data.capital) || 0;
                 actualizarUI();
-                if(!silencioso) alert("✅ Datos sincronizados correctamente.");
+                if(!silencioso) alert("✅ Sincronizado.");
             }
-        } catch (e) { if(!silencioso) alert("❌ Error al cargar datos."); }
+        } catch (e) { if(!silencioso) alert("❌ Error."); }
     }
 
     function procesarPrestamo() {
@@ -241,7 +246,7 @@
         const mod = document.getElementById('modalidad').value;
         const sem = parseInt(document.getElementById('semanas').value) || 2;
         const fec = document.getElementById('fechaInicio').value;
-        if (!nom || isNaN(mon) || !fec) { alert("Faltan datos obligatorios."); return; }
+        if (!nom || isNaN(mon) || !fec) return;
         const total = mon + (mon * (por / 100));
         const numCuotas = (mod === 'quincenal') ? 2 : sem;
         const cuota = total / numCuotas;
@@ -256,7 +261,7 @@
     }
 
     function prepararEdicion(id) {
-        if (prompt("Clave de seguridad:") !== CONTRASENA_ADMIN) return;
+        if (prompt("Clave:") !== CONTRASENA_ADMIN) return;
         const p = prestamos.find(x => x.id === id);
         editandoID = id;
         document.getElementById('nombre').value = p.nombre;
@@ -272,27 +277,27 @@
 
     function finalizarEdicion() {
         const p = prestamos.find(x => x.id === editandoID);
-        const monNuevo = parseFloat(document.getElementById('monto').value);
-        const porNuevo = parseFloat(document.getElementById('porcentaje').value) || 0;
-        const modNuevo = document.getElementById('modalidad').value;
-        const semNuevas = parseInt(document.getElementById('semanas').value) || 2;
-        capitalTotal += (p.montoOriginal - monNuevo);
+        const monN = parseFloat(document.getElementById('monto').value);
+        const porN = parseFloat(document.getElementById('porcentaje').value) || 0;
+        const modN = document.getElementById('modalidad').value;
+        const semN = parseInt(document.getElementById('semanas').value) || 2;
+        capitalTotal += (p.montoOriginal - monN);
         p.nombre = document.getElementById('nombre').value;
         p.celular = document.getElementById('celular').value;
-        p.montoOriginal = monNuevo; p.porcentajeOriginal = porNuevo;
-        p.modalidad = modNuevo; p.numSemanasOriginales = semNuevas;
+        p.montoOriginal = monN; p.porcentajeOriginal = porN;
+        p.modalidad = modN; p.numSemanasOriginales = semN;
         p.fechaInicio = document.getElementById('fechaInicio').value;
-        const nT = monNuevo + (monNuevo * (porNuevo / 100));
-        const nC = (modNuevo === 'quincenal') ? 2 : semNuevas;
-        p.totalCobrar = nT; p.valorCuotaOriginal = nT / nC;
-        p.pagos = Array.from({length: nC}, () => ({ tipo: 'normal', estado: 0, valor: p.valorCuotaOriginal }));
+        const nT = monN + (monN * (porN / 100));
+        const nCuotas = (modN === 'quincenal') ? 2 : semN;
+        p.totalCobrar = nT; p.valorCuotaOriginal = nT / nCuotas;
+        p.pagos = Array.from({length: nCuotas}, () => ({ tipo: 'normal', estado: 0, valor: p.valorCuotaOriginal }));
         editandoID = null;
         actualizarUI();
     }
 
     function eliminar(pId) {
         const p = prestamos.find(x => x.id === pId);
-        if (prompt("Clave para eliminar:") === CONTRASENA_ADMIN) {
+        if (prompt("Eliminar:") === CONTRASENA_ADMIN) {
             capitalTotal += p.montoOriginal;
             p.pagos.forEach(pago => { if (pago.estado === 1) capitalTotal -= pago.valor; });
             prestamos = prestamos.filter(x => x.id !== pId);
@@ -319,7 +324,7 @@
     }
 
     function agregarSemana(pId) {
-        if (prompt("Clave para multa ($5):") === CONTRASENA_ADMIN) {
+        if (prompt("Clave multa ($5):") === CONTRASENA_ADMIN) {
             const p = prestamos.find(x => x.id === pId);
             p.totalCobrar += 5;
             p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
@@ -332,18 +337,17 @@
         tbody.innerHTML = "";
         let ultimoMes = "";
         prestamos.forEach(p => {
-            const fObj = new Date(p.fechaInicio + "T00:00:00");
-            const mesId = fObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-            if (mesId !== ultimoMes) {
-                const trMes = document.createElement('tr');
-                const icono = mesesColapsados[mesId] ? "🔽" : "🔼";
-                trMes.innerHTML = `<td colspan="4" class="month-divider" onclick="toggleMes('${mesId}')">${mesId} <span style="float:right;">${icono}</span></td>`;
-                tbody.appendChild(trMes);
-                ultimoMes = mesId;
+            const fO = new Date(p.fechaInicio + "T00:00:00");
+            const mId = fO.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            if (mId !== ultimoMes) {
+                const trM = document.createElement('tr');
+                const icono = mesesColapsados[mId] ? "🔽" : "🔼";
+                trM.innerHTML = `<td colspan="4" class="month-divider" onclick="toggleMes('${mId}')">${mId.toUpperCase()} <span style="float:right;">${icono}</span></td>`;
+                tbody.appendChild(trM);
+                ultimoMes = mId;
             }
-            if (mesesColapsados[mesId]) return;
+            if (mesesColapsados[mId]) return;
 
-            // --- ACTUALIZACIÓN: LINK DINÁMICO POR ID ---
             let linkL = `https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
 
             const tr = document.createElement('tr');
@@ -353,14 +357,12 @@
                 if (p.modalidad === 'quincenal') fP.setDate(fP.getDate() + (i === 0 ? 15 : 30));
                 else fP.setDate(fP.getDate() + ((i + 1) * 7));
                 let cl = pago.estado === 1 ? "checked" : (pago.estado === 2 ? "x-mark" : "");
-                circs += `<div class="circle-box"><div class="circle ${cl} ${pago.tipo==='extra'?'extra-fee':''}" onclick="togglePago(${p.id}, ${i})"></div><span class="date-label">${fP.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}</span></div>`;
+                circs += `<div style="text-align:center;"><div class="circle ${cl} ${pago.tipo==='extra'?'extra-fee':''}" onclick="togglePago(${p.id}, ${i})"></div><span class="date-label">${fP.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}</span></div>`;
             });
             circs += `<div class="circle add-week" onclick="agregarSemana(${p.id})">+</div></div>`;
 
-            const modTag = p.modalidad === 'quincenal' ? '<span class="modalidad-label">15/30 DIAS</span>' : '<span class="modalidad-label">SEMANAL</span>';
-
-            tr.innerHTML = `<td><strong style="font-size:1.1em;">${p.nombre}</strong> ${modTag}<br><span class="start-date-label">INICIO: ${p.fechaInicio}</span><br><a href="https://wa.me/593${p.celular}" target="_blank" style="color:var(--primary); font-size:12px; font-weight:bold; text-decoration:none;">📱 ENVIAR WHATSAPP</a></td>
-                <td><small>CUOTA: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong style="font-size:1.2em;">TOTAL: $${p.totalCobrar.toFixed(2)}</strong></td>
+            tr.innerHTML = `<td><strong style="font-size:1.1em;">${p.nombre}</strong><br><span class="start-date-label">INICIO: ${p.fechaInicio}</span><br><a href="https://wa.me/593${p.celular}" target="_blank" style="color:var(--primary); font-size:12px; font-weight:bold; text-decoration:none;">📱 WHATSAPP</a></td>
+                <td><small>CUOTA: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong>TOTAL: $${p.totalCobrar.toFixed(2)}</strong></td>
                 <td>${circs}</td>
                 <td>
                     <button onclick="prepararEdicion(${p.id})" style="background:none; color:var(--warning); text-decoration:underline; font-size:11px; border:none; cursor:pointer; font-weight:bold;">EDITAR</button><br>
