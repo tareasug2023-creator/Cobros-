@@ -46,14 +46,15 @@
         td { padding: 12px; border: 1px solid var(--border); vertical-align: middle; background: var(--card-bg); }
         
         .payment-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
-        .circle-box { text-align: center; min-width: 45px; }
+        .circle-container { position: relative; text-align: center; min-width: 45px; }
         .circle { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; margin: auto; background: #f8fafc; color: #1e293b; font-weight: bold; }
         
         .circle.checked { background: var(--success) !important; border-color: #064e3b !important; color: white !important; }
         .circle.x-mark { background: var(--danger) !important; border-color: #7f1d1d !important; color: white !important; }
-        
         .circle.extra-fee { border-color: var(--warning); color: var(--warning); border-width: 3px; background: #fffbeb; }
         .circle.extra-fee.checked { background: var(--warning) !important; border-color: var(--warning) !important; color: white !important; }
+
+        .del-multa { position: absolute; top: -8px; right: -2px; background: var(--danger); color: white; width: 18px; height: 18px; border-radius: 50%; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; border: 1px solid white; font-weight: bold; z-index: 5; }
         
         .circle.add-week { border: 2px dashed var(--primary); color: var(--primary); font-size: 18px; background: transparent; }
         
@@ -88,7 +89,7 @@
 
     <div class="form-grid" id="mainForm">
         <input type="text" id="nombre" placeholder="Nombre Cliente" onkeyup="autoRellenar()">
-        <input type="text" id="celular" placeholder="Celular (WhatsApp)">
+        <input type="text" id="celular" placeholder="Celular" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)">
         <input type="number" id="monto" placeholder="Monto $">
         <input type="number" id="porcentaje" placeholder="Interés %">
         <select id="modalidad" onchange="cambiarModalidad()">
@@ -152,7 +153,7 @@
     }
 
     async function guardarEnNube() {
-        if (!confirm("¿Confirmar guardado en la nube?")) return;
+        if (!confirm("¿Confirmar guardado?")) return;
         try {
             await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
             alert("✅ Cambios guardados.");
@@ -186,12 +187,13 @@
         const fec = document.getElementById('fechaInicio').value;
         if (!nom || isNaN(mon) || !fec) return;
         const total = mon + (mon * (por / 100));
-        const nC = (mod === 'quincenal') ? 2 : sem;
+        const nCuotas = (mod === 'quincenal') ? 2 : sem;
+        const cuota = total / nCuotas;
         prestamos.push({
             id: Date.now(), nombre: nom, celular: document.getElementById('celular').value,
-            totalCobrar: total, valorCuotaOriginal: total / nC, montoOriginal: mon,
+            totalCobrar: total, valorCuotaOriginal: cuota, montoOriginal: mon,
             numSemanasOriginales: sem, fechaInicio: fec, modalidad: mod, porcentajeOriginal: por,
-            pagos: Array.from({length: nC}, () => ({ tipo: 'normal', estado: 0, valor: total / nC }))
+            pagos: Array.from({length: nCuotas}, () => ({ tipo: 'normal', estado: 0, valor: cuota }))
         });
         capitalTotal -= mon;
         actualizarUI();
@@ -205,7 +207,7 @@
         document.getElementById('celular').value = p.celular;
         document.getElementById('monto').value = p.montoOriginal;
         document.getElementById('porcentaje').value = p.porcentajeOriginal;
-        document.getElementById('modalidad').value = p.modalidad;
+        document.getElementById('modalidad').value = p.modalidad || 'semanal';
         document.getElementById('semanas').value = p.numSemanasOriginales;
         document.getElementById('fechaInicio').value = p.fechaInicio;
         document.getElementById('btnRegistrar').innerText = "Guardar Cambios";
@@ -215,46 +217,42 @@
 
     function finalizarEdicion() {
         const p = prestamos.find(x => x.id === editandoID);
-        const monN = parseFloat(document.getElementById('monto').value);
-        capitalTotal += (p.montoOriginal - monN);
+        const monNuevo = parseFloat(document.getElementById('monto').value);
+        capitalTotal += (p.montoOriginal - monNuevo);
         p.nombre = document.getElementById('nombre').value;
         p.celular = document.getElementById('celular').value;
-        p.montoOriginal = monN;
+        p.montoOriginal = monNuevo;
         p.porcentajeOriginal = parseFloat(document.getElementById('porcentaje').value) || 0;
         p.modalidad = document.getElementById('modalidad').value;
         p.numSemanasOriginales = parseInt(document.getElementById('semanas').value) || 2;
         p.fechaInicio = document.getElementById('fechaInicio').value;
+        
         const nT = p.montoOriginal + (p.montoOriginal * (p.porcentajeOriginal / 100));
         const nC = (p.modalidad === 'quincenal') ? 2 : p.numSemanasOriginales;
         p.totalCobrar = nT; p.valorCuotaOriginal = nT / nC;
-        p.pagos = Array.from({length: nC}, () => ({ tipo: 'normal', estado: 0, valor: nT / nC }));
+        p.pagos = Array.from({length: nC}, () => ({ tipo: 'normal', estado: 0, valor: p.valorCuotaOriginal }));
+        
         editandoID = null;
         document.getElementById('btnRegistrar').innerText = "Registrar Préstamo";
         actualizarUI();
     }
 
-    function menuEliminar(id) {
-        const opc = prompt("Escriba:\n1. Borrar ÚLTIMA MULTA\n2. Borrar PRÉSTAMO completo\n\n(Requiere clave)");
-        if (opc === "1") {
-            if (prompt("Clave:") === CONTRASENA_ADMIN) {
-                const p = prestamos.find(x => x.id === id);
-                const indiceMulta = [...p.pagos].reverse().findIndex(pago => pago.tipo === 'extra');
-                if (indiceMulta !== -1) {
-                    const idxReal = p.pagos.length - 1 - indiceMulta;
-                    if (p.pagos[idxReal].estado === 1) capitalTotal -= 5;
-                    p.totalCobrar -= 5;
-                    p.pagos.splice(idxReal, 1);
-                    actualizarUI();
-                } else { alert("No hay multas."); }
-            }
-        } else if (opc === "2") {
-            if (prompt("Clave:") === CONTRASENA_ADMIN) {
-                const p = prestamos.find(x => x.id === id);
-                capitalTotal += p.montoOriginal;
-                p.pagos.forEach(pago => { if (pago.estado === 1) capitalTotal -= pago.valor; });
-                prestamos = prestamos.filter(x => x.id !== id);
-                actualizarUI();
-            }
+    function eliminarPrestamo(id) {
+        if (prompt("Clave para eliminar:") === CONTRASENA_ADMIN) {
+            const p = prestamos.find(x => x.id === id);
+            capitalTotal += p.montoOriginal;
+            prestamos = prestamos.filter(x => x.id !== id);
+            actualizarUI();
+        }
+    }
+
+    function borrarMulta(pId, index) {
+        if (confirm("¿Eliminar esta multa de $5.00?")) {
+            const p = prestamos.find(x => x.id === pId);
+            if (p.pagos[index].estado === 1) capitalTotal -= 5;
+            p.totalCobrar -= 5;
+            p.pagos.splice(index, 1);
+            actualizarUI();
         }
     }
 
@@ -269,7 +267,7 @@
     }
 
     function agregarMulta(pId) {
-        if (prompt("Clave multa ($5):") === CONTRASENA_ADMIN) {
+        if (confirm("¿Agregar multa de $5.00?")) {
             const p = prestamos.find(x => x.id === pId);
             p.totalCobrar += 5;
             p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
@@ -282,7 +280,7 @@
         prestamos.sort((a, b) => new Date(a.fechaInicio + "T00:00:00") - new Date(b.fechaInicio + "T00:00:00"));
         renderizarTabla();
         calcularGanancias();
-        if(!editandoID) ["nombre", "celular", "monto", "porcentaje", "semanas", "fechaInicio"].forEach(id => document.getElementById(id).value = "");
+        ["nombre", "celular", "monto", "porcentaje", "semanas", "fechaInicio"].forEach(id => document.getElementById(id).value = "");
     }
 
     function renderizarTabla() {
@@ -293,7 +291,6 @@
         prestamos.forEach(p => {
             const fObj = new Date(p.fechaInicio + "T00:00:00");
             const mesId = fObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-            
             if (mesId !== ultimoMes) {
                 const trM = document.createElement('tr');
                 const icono = mesesColapsados[mesId] ? "🔽" : "🔼";
@@ -301,8 +298,6 @@
                 tbody.appendChild(trM);
                 ultimoMes = mesId;
             }
-
-            // CORRECCIÓN: Si el mes está colapsado, no mostrar el préstamo
             if (mesesColapsados[mesId]) return;
 
             const tr = document.createElement('tr');
@@ -312,9 +307,11 @@
                 if (p.modalidad === 'quincenal') fP.setDate(fP.getDate() + (i === 0 ? 15 : 30));
                 else fP.setDate(fP.getDate() + ((i + 1) * 7));
                 
+                const esMulta = pago.tipo === 'extra';
                 circs += `
-                    <div class="circle-box">
-                        <div class="circle ${pago.estado === 1 ? 'checked' : (pago.estado === 2 ? 'x-mark' : '')} ${pago.tipo==='extra'?'extra-fee':''}" 
+                    <div class="circle-container">
+                        ${esMulta ? `<div class="del-multa" onclick="borrarMulta(${p.id}, ${i})">×</div>` : ''}
+                        <div class="circle ${pago.estado === 1 ? 'checked' : (pago.estado === 2 ? 'x-mark' : '')} ${esMulta ? 'extra-fee' : ''}" 
                              onclick="togglePago(${p.id}, ${i})">${i + 1}</div>
                         <span class="date-label">${fP.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}</span>
                     </div>`;
@@ -332,9 +329,9 @@
                 <td><small>CUOTA: $${p.valorCuotaOriginal.toFixed(2)}</small><br><strong>TOTAL: $${p.totalCobrar.toFixed(2)}</strong></td>
                 <td>${circs}</td>
                 <td>
-                    <button onclick="prepararEdicion(${p.id})" style="background:none; color:var(--warning); text-decoration:underline; font-size:11px; border:none; cursor:pointer;">EDITAR</button><br>
-                    <button onclick="menuEliminar(${p.id})" style="background:none; color:var(--danger); text-decoration:underline; font-size:11px; border:none; cursor:pointer;">BORRAR</button><br>
-                    <button onclick="navigator.clipboard.writeText('${linkL}').then(()=>alert('Copiado'))" style="background:none; color:var(--success); text-decoration:underline; font-size:11px; border:none; cursor:pointer;">🔗 LINK</button>
+                    <button onclick="prepararEdicion(${p.id})" style="background:none; color:var(--warning); text-decoration:underline; font-size:11px; border:none; cursor:pointer; font-weight:bold;">EDITAR</button><br>
+                    <button onclick="eliminarPrestamo(${p.id})" style="background:none; color:var(--danger); text-decoration:underline; font-size:11px; border:none; cursor:pointer; font-weight:bold;">BORRAR</button><br>
+                    <button onclick="navigator.clipboard.writeText('${linkL}').then(()=>alert('Copiado'))" style="background:none; color:var(--success); text-decoration:underline; font-size:11px; border:none; cursor:pointer; font-weight:bold;">🔗 LINK</button>
                 </td>`;
             tbody.appendChild(tr);
         });
@@ -350,15 +347,22 @@
         let total = 0; let mes = 0;
         const ahora = new Date();
         prestamos.forEach(p => {
-            const cuotaB = p.montoOriginal / (p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales);
-            p.pagos.forEach(pago => {
+            const numCuotas = p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales;
+            const gananciaPorCuota = (p.totalCobrar - p.montoOriginal) / (numCuotas || 1);
+            let fBase = new Date(p.fechaInicio + "T00:00:00");
+            p.pagos.forEach((pago, idx) => {
+                let fPago = new Date(fBase);
+                if (p.modalidad === 'quincenal') fPago.setDate(fPago.getDate() + (idx === 0 ? 15 : 30));
+                else fPago.setDate(fPago.getDate() + ((idx + 1) * 7));
                 if (pago.estado === 1) {
-                    let g = (pago.tipo === 'extra') ? 5 : (pago.valor - cuotaB);
+                    let g = (pago.tipo === 'extra') ? 5 : gananciaPorCuota;
                     total += g;
+                    if (fPago.getMonth() === ahora.getMonth() && fPago.getFullYear() === ahora.getFullYear()) mes += g;
                 }
             });
         });
         document.getElementById('gananciaTotal').innerText = `$ ${total.toFixed(2)}`;
+        document.getElementById('gananciaMes').innerText = `$ ${mes.toFixed(2)}`;
     }
 
     window.onload = () => cargarDeNube(true);
