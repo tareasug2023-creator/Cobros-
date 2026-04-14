@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Panel Premium Final</title>
+    <title>Prestamos CC - Panel Premium Total</title>
     <style>
         :root { 
             --primary: #1e40af; --success: #15803d; --danger: #b91c1c; --warning: #b45309; 
@@ -25,6 +25,11 @@
         .capital-section { background: var(--header-bg); color: white; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--primary); }
         .capital-section input { background: transparent; color: #4ade80; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
         
+        .tools-box { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; background: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; }
+        .btn-tool { padding: 10px 15px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: bold; border: none; color: white; transition: 0.2s; }
+        .btn-audit { background: #6d28d9; }
+        .btn-history { background: var(--success); }
+
         .notif-panel { background: #fffbeb; border: 2px solid #f59e0b; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: none; }
         body.dark-mode .notif-panel { background: #451a03; border-color: #f59e0b; color: white; }
         .notif-title { font-weight: 800; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
@@ -38,7 +43,7 @@
         .stat-card { background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); border-left: 8px solid var(--primary); }
         .stat-card p { margin: 5px 0 0; font-size: 1.4em; font-weight: bold; color: var(--primary); }
 
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #e2e8f0; padding: 20px; border-radius: 8px; border: 2px solid var(--border); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #e2e8f0; padding: 20px; border-radius: 8px; border: 1px solid var(--border); }
         body.dark-mode .form-grid { background: #1e293b; }
         
         input, select { padding: 12px; background: var(--input-bg); border: 2px solid var(--border); border-radius: 6px; color: var(--text-main); width: 100%; box-sizing: border-box; }
@@ -84,8 +89,15 @@
         <div class="capital-section">
             CAPITAL DISPONIBLE<br>
             $ <input type="number" id="capitalGlobal" step="0.01" value="0.00" readonly>
-            <span style="display:block; cursor:pointer; text-decoration:underline; font-size:11px; color:#60a5fa;" onclick="ajustarCapitalConClave()">Ajustar Capital</span>
+            <span style="display:block; cursor:pointer; text-decoration:underline; font-size:11px; color:#60a5fa;" onclick="ajustarCapitalConClave()">Ajustar Manual</span>
         </div>
+    </div>
+
+    <div class="tools-box">
+        <span style="font-weight: 800; font-size: 13px;">⚙️ CONTABILIDAD:</span>
+        <button class="btn-tool btn-audit" onclick="auditoriaBase()">📊 Auditoría Base $1000</button>
+        <button class="btn-tool btn-history" onclick="mostrarHistorialExcel()">💰 Intereses Mensuales (Estilo Excel)</button>
+        <button class="btn-tool" style="background:#0f172a;" onclick="window.print()">🖨️ Reporte Imprimible</button>
     </div>
 
     <div id="notifPanel" class="notif-panel">
@@ -98,8 +110,8 @@
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card"><h4>Ganancia Total</h4><p id="gananciaTotal">$ 0.00</p></div>
-        <div class="stat-card"><h4>Ganancia Mes</h4><p id="gananciaMes">$ 0.00</p></div>
+        <div class="stat-card"><h4>Interés Total Generado</h4><p id="gananciaTotal">$ 0.00</p></div>
+        <div class="stat-card"><h4>Interés Este Mes</h4><p id="gananciaMes">$ 0.00</p></div>
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
@@ -142,6 +154,38 @@
     let prestamos = [];
     let editandoID = null;
     let mesesColapsados = {};
+
+    function mostrarHistorialExcel() {
+        let reporte = {};
+        prestamos.forEach(p => {
+            const fechaObj = new Date(p.fechaInicio + "T00:00:00");
+            const mesAño = fechaObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            const gananciaInteres = p.montoOriginal * (p.porcentajeOriginal / 100);
+            const totalMultas = p.pagos.filter(pag => pag.tipo === 'extra' && pag.estado === 1).length * 5;
+            if (!reporte[mesAño]) reporte[mesAño] = { capitalPrestato: 0, ganancia: 0 };
+            reporte[mesAño].capitalPrestato += p.montoOriginal;
+            reporte[mesAño].ganancia += (gananciaInteres + totalMultas);
+        });
+        let msg = "📊 REPORTE MENSUAL (ESTILO EXCEL):\n\n";
+        Object.keys(reporte).reverse().forEach(m => {
+            msg += `• ${m.toUpperCase()}:\n  - Prestado: $${reporte[m].capitalPrestato.toFixed(2)}\n  - Ganancia: $${reporte[m].ganancia.toFixed(2)}\n\n`;
+        });
+        alert(msg || "No hay datos.");
+    }
+
+    function auditoriaBase() {
+        if (prompt("Clave:") !== CONTRASENA_ADMIN) return;
+        const base = 1000.00;
+        let pVigente = 0; let cRecuperado = 0;
+        prestamos.forEach(p => {
+            pVigente += p.montoOriginal;
+            const pagadas = p.pagos.filter(pag => pag.estado === 1 && pag.tipo !== 'extra').length;
+            cRecuperado += (pagadas * (p.montoOriginal / (p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales)));
+        });
+        capitalTotal = base - pVigente + cRecuperado;
+        actualizarUI();
+        alert(`Auditoría:\nEn Caja: $${capitalTotal.toFixed(2)}\nEn la calle: $${pVigente.toFixed(2)}`);
+    }
 
     function cambiarModalidad() {
         const mod = document.getElementById('modalidad').value;
@@ -210,10 +254,9 @@
         const total = mon + (mon * (por / 100));
         const nC = (mod === 'quincenal') ? 2 : sem;
         prestamos.push({
-            id: Date.now(), nombre: nom, celular: cel,
-            totalCobrar: total, valorCuotaOriginal: total / nC, montoOriginal: mon,
-            numSemanasOriginales: sem, fechaInicio: fec, modalidad: mod, porcentajeOriginal: por,
-            pagos: Array.from({length: nC}, () => ({ tipo: 'normal', estado: 0, valor: total / nC }))
+            id: Date.now(), nombre: nom, celular: cel, totalCobrar: total, valorCuotaOriginal: total/nC,
+            montoOriginal: mon, numSemanasOriginales: sem, fechaInicio: fec, modalidad: mod, porcentajeOriginal: por,
+            pagos: Array.from({length: nC}, () => ({ tipo: 'normal', estado: 0, valor: total/nC }))
         });
         capitalTotal -= mon;
         actualizarUI();
@@ -221,11 +264,9 @@
 
     function enviarRecordatorio(id, monto) {
         const p = prestamos.find(x => x.id === id);
-        const lectorLink = `https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
-        let celFinal = p.celular;
-        if (celFinal.startsWith('0')) celFinal = celFinal.substring(1);
-        const msg = `Hola ${p.nombre}, te saludamos de Prestamos CC. Recordamos que hoy vence tu cuota de $${monto.toFixed(2)}. Revisa tu estado aqui: ${lectorLink}`;
-        window.open(`https://api.whatsapp.com/send?phone=593${celFinal}&text=${encodeURIComponent(msg)}`, '_blank');
+        let cel = p.celular; if (cel.startsWith('0')) cel = cel.substring(1);
+        const msg = `Hola ${p.nombre}, vence cuota de $${monto.toFixed(2)}. Revisa aqui: https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
+        window.open(`https://api.whatsapp.com/send?phone=593${cel}&text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function prepararEdicion(id) {
@@ -240,8 +281,7 @@
         document.getElementById('semanas').value = p.numSemanasOriginales;
         document.getElementById('fechaInicio').value = p.fechaInicio;
         document.getElementById('btnRegistrar').innerText = "Guardar Cambios";
-        cambiarModalidad();
-        window.scrollTo({top: 0, behavior: 'smooth'});
+        cambiarModalidad(); window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
     function finalizarEdicion() {
@@ -259,8 +299,7 @@
         const nC = (p.modalidad === 'quincenal') ? 2 : p.numSemanasOriginales;
         p.totalCobrar = nT; p.valorCuotaOriginal = nT / nC;
         p.pagos = Array.from({length: nC}, () => ({ tipo: 'normal', estado: 0, valor: nT / nC }));
-        editandoID = null;
-        document.getElementById('btnRegistrar').innerText = "Registrar Préstamo";
+        editandoID = null; document.getElementById('btnRegistrar').innerText = "Registrar Préstamo";
         actualizarUI();
     }
 
@@ -271,9 +310,9 @@
                 const p = prestamos.find(x => x.id === id);
                 const idx = [...p.pagos].reverse().findIndex(pag => pag.tipo === 'extra');
                 if (idx !== -1) {
-                    const realIdx = p.pagos.length - 1 - idx;
-                    if (p.pagos[realIdx].estado === 1) capitalTotal -= 5;
-                    p.totalCobrar -= 5; p.pagos.splice(realIdx, 1);
+                    const rIdx = p.pagos.length - 1 - idx;
+                    if (p.pagos[rIdx].estado === 1) capitalTotal -= 5;
+                    p.totalCobrar -= 5; p.pagos.splice(rIdx, 1);
                     actualizarUI();
                 }
             }
@@ -300,8 +339,7 @@
     function agregarMulta(pId) {
         if (prompt("Clave multa ($5):") === CONTRASENA_ADMIN) {
             const p = prestamos.find(x => x.id === pId);
-            p.totalCobrar += 5;
-            p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
+            p.totalCobrar += 5; p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
             actualizarUI();
         }
     }
@@ -309,21 +347,16 @@
     function actualizarUI() {
         document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
         prestamos.sort((a, b) => new Date(a.fechaInicio + "T00:00:00") - new Date(b.fechaInicio + "T00:00:00"));
-        renderizarTabla();
-        calcularGanancias();
-        generarNotificaciones();
+        renderizarTabla(); calcularGanancias(); generarNotificaciones();
         if(!editandoID) ["nombre", "celular", "monto", "porcentaje", "semanas", "fechaInicio"].forEach(id => {
             const el = document.getElementById(id); if(el) el.value = "";
         });
     }
 
     function generarNotificaciones() {
-        const panel = document.getElementById('notifPanel');
         const list = document.getElementById('notifList');
         const hoy = new Date().toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'});
-        list.innerHTML = "";
-        let hoyCount = 0;
-
+        list.innerHTML = ""; let hoyCount = 0;
         prestamos.forEach(p => {
             p.pagos.forEach((pago, i) => {
                 if (pago.estado === 0) {
@@ -332,23 +365,18 @@
                     else fP.setDate(fP.getDate() + ((i + 1) * 7));
                     if (fP.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'}) === hoy) {
                         hoyCount++;
-                        list.innerHTML += `<div class="notif-item">
-                            <span>👤 <b>${p.nombre}</b> (Cuota: <b>$${pago.valor.toFixed(2)}</b>)</span>
-                            <button class="btn-send-notif" onclick="enviarRecordatorio(${p.id}, ${pago.valor})">📲 COBRAR</button>
-                        </div>`;
+                        list.innerHTML += `<div class="notif-item"><span>👤 <b>${p.nombre}</b> ($${pago.valor.toFixed(2)})</span><button class="btn-send-notif" onclick="enviarRecordatorio(${p.id}, ${pago.valor})">📲 COBRAR</button></div>`;
                     }
                 }
             });
         });
-        panel.style.display = hoyCount > 0 ? "block" : "none";
+        document.getElementById('notifPanel').style.display = hoyCount > 0 ? "block" : "none";
     }
 
     function renderizarTabla() {
         const tbody = document.getElementById('cuerpoTabla');
         const query = document.getElementById('busqueda').value.toLowerCase();
-        tbody.innerHTML = "";
-        let ultimoMes = "";
-
+        tbody.innerHTML = ""; let ultimoMes = "";
         prestamos.forEach(p => {
             if (query && !p.nombre.toLowerCase().includes(query)) return;
             const fObj = new Date(p.fechaInicio + "T00:00:00");
@@ -360,40 +388,22 @@
                 tbody.appendChild(trM); ultimoMes = mesId;
             }
             if (mesesColapsados[mesId]) return;
-
-            const pagosHechos = p.pagos.filter(pag => pag.estado === 1).length;
-            const porcentaje = (pagosHechos / p.pagos.length) * 100;
+            const porc = (p.pagos.filter(pag => pag.estado === 1).length / p.pagos.length) * 100;
             const tr = document.createElement('tr');
             let circs = '<div class="payment-scroll">';
             p.pagos.forEach((pago, i) => {
                 let fP = new Date(p.fechaInicio + "T00:00:00");
                 if (p.modalidad === 'quincenal') fP.setDate(fP.getDate() + (i === 0 ? 15 : 30));
                 else fP.setDate(fP.getDate() + ((i + 1) * 7));
-                circs += `<div style="text-align:center; min-width:45px;">
-                    <div class="circle ${pago.estado === 1 ? 'checked' : (pago.estado === 2 ? 'x-mark' : '')} ${pago.tipo==='extra'?'extra-fee':''}" onclick="togglePago(${p.id}, ${i})">${i + 1}</div>
-                    <span class="date-label">${fP.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}</span>
-                </div>`;
+                circs += `<div style="text-align:center; min-width:45px;"><div class="circle ${pago.estado===1?'checked':(pago.estado===2?'x-mark':'')} ${pago.tipo==='extra'?'extra-fee':''}" onclick="togglePago(${p.id},${i})">${i+1}</div><span class="date-label">${fP.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}</span></div>`;
             });
             circs += `<div class="circle add-week" onclick="agregarMulta(${p.id})">+</div></div>`;
 
             let linkL = `https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
-            tr.innerHTML = `<td>
-                <strong style="font-size:1.1em;">${p.nombre}</strong> <span class="badge ${p.modalidad==='quincenal'?'badge-quincenal':'badge-semanal'}">${p.modalidad}</span><br>
-                <span class="start-date-label">📅 ${p.fechaInicio}</span><br>
-                <a href="https://wa.me/593${p.celular}" target="_blank" style="color:var(--primary); font-size:11px; font-weight:bold; text-decoration:none;">📱 WhatsApp</a>
-            </td>
-            <td>
-                <div style="font-size:10px; font-weight:bold;">PROGRESO: ${Math.round(porcentaje)}%</div>
-                <div class="progress-container"><div class="progress-bar" style="width:${porcentaje}%"></div></div>
-                <div style="margin-top:8px;">Cuota: <span class="cuota-highlight">$${p.valorCuotaOriginal.toFixed(2)}</span></div>
-                <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">Deuda: $${p.totalCobrar.toFixed(2)}</div>
-            </td>
+            tr.innerHTML = `<td><strong>${p.nombre}</strong> <span class="badge ${p.modalidad==='quincenal'?'badge-quincenal':'badge-semanal'}">${p.modalidad}</span><br><span class="start-date-label">📅 ${p.fechaInicio}</span></td>
+            <td><div class="progress-container"><div class="progress-bar" style="width:${porc}%"></div></div><div>Cuota: <span class="cuota-highlight">$${p.valorCuotaOriginal.toFixed(2)}</span></div><div style="font-size:11px; margin-top:2px;">Deuda: $${p.totalCobrar.toFixed(2)}</div></td>
             <td>${circs}</td>
-            <td><div style="display:flex; gap:5px;">
-                <button class="btn-action" onclick="prepararEdicion(${p.id})" title="Editar">✏️</button>
-                <button class="btn-action" onclick="menuEliminar(${p.id})" title="Borrar">🗑️</button>
-                <button class="btn-action" onclick="navigator.clipboard.writeText('${linkL}').then(()=>alert('Copiado'))" title="Link">🔗</button>
-            </div></td>`;
+            <td><div style="display:flex; gap:5px;"><button class="btn-action" onclick="prepararEdicion(${p.id})">✏️</button><button class="btn-action" onclick="navigator.clipboard.writeText('${linkL}').then(()=>alert('Copiado'))">🔗</button><button class="btn-action" onclick="menuEliminar(${p.id})">🗑️</button></div></td>`;
             tbody.appendChild(tr);
         });
     }
@@ -404,12 +414,16 @@
     }
 
     function calcularGanancias() {
-        let total = 0;
+        let total = 0; let mesVal = 0; const ahora = new Date();
         prestamos.forEach(p => {
-            const cuotaB = p.montoOriginal / (p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales);
-            p.pagos.forEach(pag => { if (pag.estado === 1) total += (pag.tipo === 'extra' ? 5 : (pag.valor - cuotaB)); });
+            const gan = p.montoOriginal * (p.porcentajeOriginal / 100);
+            const mul = p.pagos.filter(pag => pag.tipo === 'extra' && pag.estado === 1).length * 5;
+            total += (gan + mul);
+            const fP = new Date(p.fechaInicio + "T00:00:00");
+            if (fP.getMonth() === ahora.getMonth() && fP.getFullYear() === ahora.getFullYear()) mesVal += (gan + mul);
         });
         document.getElementById('gananciaTotal').innerText = `$ ${total.toFixed(2)}`;
+        document.getElementById('gananciaMes').innerText = `$ ${mesVal.toFixed(2)}`;
     }
 
     window.onload = () => cargarDeNube(true);
