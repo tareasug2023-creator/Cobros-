@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Panel Premium con Notificaciones</title>
+    <title>Prestamos CC - Panel Premium Total</title>
     <style>
         :root { 
             --primary: #1e40af; --success: #15803d; --danger: #b91c1c; --warning: #b45309; 
@@ -25,19 +25,18 @@
         .capital-section { background: var(--header-bg); color: white; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--primary); }
         .capital-section input { background: transparent; color: #4ade80; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
         
-        /* SECCIÓN DE NOTIFICACIONES */
+        /* NOTIFICACIONES */
         .notif-panel { background: #fffbeb; border: 2px solid #f59e0b; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: none; }
         body.dark-mode .notif-panel { background: #451a03; border-color: #f59e0b; color: white; }
         .notif-title { font-weight: 800; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-        .notif-list { list-style: none; padding: 0; margin: 0; font-size: 13px; }
-        .notif-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(0,0,0,0.1); }
+        .notif-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .btn-send-notif { background: #25d366; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; }
 
         .search-container { margin-bottom: 20px; }
         .search-input { width: 100%; padding: 12px; border-radius: 8px; border: 2px solid var(--border); background: var(--input-bg); color: var(--text-main); box-sizing: border-box; }
 
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .stat-card { background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); border-left: 8px solid var(--primary); }
-        .stat-card h4 { margin: 0; color: var(--text-dim); font-size: 0.9em; text-transform: uppercase; }
         .stat-card p { margin: 5px 0 0; font-size: 1.4em; font-weight: bold; color: var(--primary); }
 
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #e2e8f0; padding: 20px; border-radius: 8px; border: 2px solid var(--border); }
@@ -70,7 +69,8 @@
         .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; color: white; }
         .badge-semanal { background: #6366f1; }
         .badge-quincenal { background: #ec4899; }
-        .btn-action { background: none; border: none; font-size: 18px; cursor: pointer; padding: 5px; }
+        .btn-action { background: none; border: none; font-size: 18px; cursor: pointer; padding: 5px; border-radius: 4px; }
+        .btn-action:hover { background: rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -108,7 +108,7 @@
 
     <div class="form-grid" id="mainForm">
         <input type="text" id="nombre" placeholder="Nombre Cliente" onkeyup="autoRellenar()">
-        <input type="text" id="celular" placeholder="WhatsApp">
+        <input type="text" id="celular" placeholder="WhatsApp (Ej: 0987654321)">
         <input type="number" id="monto" placeholder="Monto $">
         <input type="number" id="porcentaje" placeholder="Interés %">
         <select id="modalidad" onchange="cambiarModalidad()">
@@ -175,7 +175,7 @@
         if (!confirm("¿Confirmar guardado?")) return;
         try {
             await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ capital: capitalTotal, prestamos: prestamos }) });
-            alert("✅ Guardado.");
+            alert("✅ Cambios guardados.");
         } catch (e) { alert("❌ Error."); }
     }
 
@@ -204,17 +204,35 @@
         const mod = document.getElementById('modalidad').value;
         const sem = parseInt(document.getElementById('semanas').value) || 2;
         const fec = document.getElementById('fechaInicio').value;
+        const cel = document.getElementById('celular').value.replace(/\D/g, '');
         if (!nom || isNaN(mon) || !fec) return;
         const total = mon + (mon * (por / 100));
         const nC = (mod === 'quincenal') ? 2 : sem;
         prestamos.push({
-            id: Date.now(), nombre: nom, celular: document.getElementById('celular').value,
+            id: Date.now(), nombre: nom, celular: cel,
             totalCobrar: total, valorCuotaOriginal: total / nC, montoOriginal: mon,
             numSemanasOriginales: sem, fechaInicio: fec, modalidad: mod, porcentajeOriginal: por,
             pagos: Array.from({length: nC}, () => ({ tipo: 'normal', estado: 0, valor: total / nC }))
         });
         capitalTotal -= mon;
         actualizarUI();
+    }
+
+    // FUNCIÓN DE WHATSAPP MEJORADA
+    function enviarRecordatorio(id, monto) {
+        const p = prestamos.find(x => x.id === id);
+        const lectorLink = `https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
+        
+        // Mensaje formateado para WhatsApp
+        const msg = `Hola *${p.nombre}*, te saludamos de *Prestamos CC*. Te recordamos que hoy vence tu cuota de *$${monto.toFixed(2)}*. Puedes revisar tu estado actualizado aquí: ${lectorLink}`;
+        
+        // Codificar el mensaje para URL
+        const encodedMsg = encodeURIComponent(msg);
+        
+        // Usar api.whatsapp.com para mejor compatibilidad con texto
+        const url = `https://api.whatsapp.com/send?phone=593${p.celular}&text=${encodedMsg}`;
+        
+        window.open(url, '_blank');
     }
 
     function prepararEdicion(id) {
@@ -230,7 +248,7 @@
         document.getElementById('fechaInicio').value = p.fechaInicio;
         document.getElementById('btnRegistrar').innerText = "Guardar Cambios";
         cambiarModalidad();
-        window.scrollTo(0, 0);
+        window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
     function finalizarEdicion() {
@@ -238,7 +256,7 @@
         const monN = parseFloat(document.getElementById('monto').value);
         capitalTotal += (p.montoOriginal - monN);
         p.nombre = document.getElementById('nombre').value;
-        p.celular = document.getElementById('celular').value;
+        p.celular = document.getElementById('celular').value.replace(/\D/g, '');
         p.montoOriginal = monN;
         p.porcentajeOriginal = parseFloat(document.getElementById('porcentaje').value) || 0;
         p.modalidad = document.getElementById('modalidad').value;
@@ -322,7 +340,10 @@
                     
                     if (fP.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'}) === hoy) {
                         hoyCount++;
-                        list.innerHTML += `<div class="notif-item"><span>👤 ${p.nombre}</span> <span>💰 $${pago.valor.toFixed(2)}</span></div>`;
+                        list.innerHTML += `<div class="notif-item">
+                            <span>👤 <b>${p.nombre}</b> - $${pago.valor.toFixed(2)}</span>
+                            <button class="btn-send-notif" onclick="enviarRecordatorio(${p.id}, ${pago.valor})">📲 COBRAR</button>
+                        </div>`;
                     }
                 }
             });
