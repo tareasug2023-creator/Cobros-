@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Administrador</title>
+    <title>Prestamos CC - Administrador Total</title>
     <style>
         :root { 
             --primary: #1e40af; --success: #15803d; --danger: #b91c1c; --warning: #b45309; 
@@ -20,7 +20,7 @@
         .container { max-width: 1300px; margin: auto; background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); border: 1px solid var(--border); }
         .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary); padding-bottom: 20px; margin-bottom: 20px; }
         
-        .theme-toggle { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; z-index: 1000; }
+        .theme-toggle { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
 
         .capital-section { background: var(--header-bg); color: white; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--primary); }
         .capital-section input { background: transparent; color: #4ade80; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
@@ -146,7 +146,7 @@
 
     function ajustarCapitalConClave() {
         if (prompt("Ingrese clave:") === CONTRASENA_ADMIN) {
-            const n = prompt("Nuevo capital:", capitalTotal.toFixed(2));
+            const n = prompt("Nuevo capital disponible:", capitalTotal.toFixed(2));
             if (n) { capitalTotal = parseFloat(n); actualizarUI(); }
         }
     }
@@ -167,7 +167,7 @@
                 prestamos = data.prestamos || [];
                 capitalTotal = parseFloat(data.capital) || 0;
                 actualizarUI();
-                if(!silencioso) alert("✅ Datos sincronizados.");
+                if(!silencioso) alert("✅ Sincronizado correctamente.");
             }
         } catch (e) { if(!silencioso) alert("❌ Error."); }
     }
@@ -198,7 +198,7 @@
     }
 
     function prepararEdicion(id) {
-        if (prompt("Clave:") !== CONTRASENA_ADMIN) return;
+        if (prompt("Clave de seguridad:") !== CONTRASENA_ADMIN) return;
         const p = prestamos.find(x => x.id === id);
         editandoID = id;
         document.getElementById('nombre').value = p.nombre;
@@ -233,20 +233,19 @@
         actualizarUI();
     }
 
-    // --- MENÚ DE ELIMINACIÓN ---
     function menuEliminar(id) {
-        const opc = prompt("Escriba el número de la opción:\n1. Eliminar ÚLTIMA multa agregada\n2. Eliminar TODO el préstamo\n\n(Requiere clave)");
+        const opc = prompt("Escriba:\n1. Borrar ÚLTIMA MULTA\n2. Borrar PRÉSTAMO completo\n\n(Requiere clave)");
         if (opc === "1") {
             if (prompt("Clave:") === CONTRASENA_ADMIN) {
                 const p = prestamos.find(x => x.id === id);
                 const indiceMulta = [...p.pagos].reverse().findIndex(pago => pago.tipo === 'extra');
                 if (indiceMulta !== -1) {
-                    const realIndex = p.pagos.length - 1 - indiceMulta;
-                    if (p.pagos[realIndex].estado === 1) capitalTotal -= 5;
+                    const idxReal = p.pagos.length - 1 - indiceMulta;
+                    if (p.pagos[idxReal].estado === 1) capitalTotal -= 5;
                     p.totalCobrar -= 5;
-                    p.pagos.splice(realIndex, 1);
+                    p.pagos.splice(idxReal, 1);
                     actualizarUI();
-                } else { alert("No hay multas para eliminar."); }
+                } else { alert("No hay multas."); }
             }
         } else if (opc === "2") {
             if (prompt("Clave:") === CONTRASENA_ADMIN) {
@@ -270,7 +269,7 @@
     }
 
     function agregarMulta(pId) {
-        if (prompt("Clave para multa ($5):") === CONTRASENA_ADMIN) {
+        if (prompt("Clave multa ($5):") === CONTRASENA_ADMIN) {
             const p = prestamos.find(x => x.id === pId);
             p.totalCobrar += 5;
             p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
@@ -283,16 +282,18 @@
         prestamos.sort((a, b) => new Date(a.fechaInicio + "T00:00:00") - new Date(b.fechaInicio + "T00:00:00"));
         renderizarTabla();
         calcularGanancias();
-        ["nombre", "celular", "monto", "porcentaje", "semanas", "fechaInicio"].forEach(id => document.getElementById(id).value = "");
+        if(!editandoID) ["nombre", "celular", "monto", "porcentaje", "semanas", "fechaInicio"].forEach(id => document.getElementById(id).value = "");
     }
 
     function renderizarTabla() {
         const tbody = document.getElementById('cuerpoTabla');
         tbody.innerHTML = "";
         let ultimoMes = "";
+
         prestamos.forEach(p => {
             const fObj = new Date(p.fechaInicio + "T00:00:00");
             const mesId = fObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            
             if (mesId !== ultimoMes) {
                 const trM = document.createElement('tr');
                 const icono = mesesColapsados[mesId] ? "🔽" : "🔼";
@@ -300,6 +301,8 @@
                 tbody.appendChild(trM);
                 ultimoMes = mesId;
             }
+
+            // CORRECCIÓN: Si el mes está colapsado, no mostrar el préstamo
             if (mesesColapsados[mesId]) return;
 
             const tr = document.createElement('tr');
@@ -308,6 +311,7 @@
                 let fP = new Date(p.fechaInicio + "T00:00:00");
                 if (p.modalidad === 'quincenal') fP.setDate(fP.getDate() + (i === 0 ? 15 : 30));
                 else fP.setDate(fP.getDate() + ((i + 1) * 7));
+                
                 circs += `
                     <div class="circle-box">
                         <div class="circle ${pago.estado === 1 ? 'checked' : (pago.estado === 2 ? 'x-mark' : '')} ${pago.tipo==='extra'?'extra-fee':''}" 
