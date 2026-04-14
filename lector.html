@@ -9,7 +9,7 @@
             --primary: #1e40af; 
             --success: #15803d; 
             --danger: #ef4444;
-            --warning: #f59e0b; 
+            --warning: #b45309; /* Ámbar oscuro */
             --bg: #f8fafc; 
             --text: #1e293b; 
         }
@@ -23,22 +23,27 @@
         .info-box { background: #f1f5f9; padding: 15px; border-radius: 12px; margin: 20px 0; border: 1px solid #e2e8f0; text-align: left; }
         .grid-pagos { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 15px; }
         
-        .circle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; transition: 0.3s; position: relative; color: #64748b; }
+        .circle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; transition: 0.3s; position: relative; color: #64748b; background: white; }
         
-        /* ESTADOS DE LOS CÍRCULOS */
+        /* ESTADOS DE LOS CÍRCULOS (Marcados) */
         .checked { background: var(--success) !important; border-color: var(--success) !important; color: white !important; }
         .x-mark { background: var(--danger) !important; border-color: var(--danger) !important; color: white !important; }
         
-        /* ESTILO PARA MULTAS */
+        /* LÓGICA DE MULTAS (REGLA ACTUALIZADA) */
         .extra-fee { border-color: var(--warning); color: var(--warning); border-width: 3px; background: #fffbeb; }
-        .extra-fee.checked { background: var(--warning) !important; border-color: var(--warning) !important; color: white !important; }
+        
+        /* Cuando la multa está PAGADA, se rellena de AMARILLO */
+        .extra-fee.checked { 
+            background: var(--warning) !important; 
+            border-color: var(--warning) !important; 
+            color: white !important; 
+        }
 
-        .multa-tag { font-size: 9px; position: absolute; bottom: -15px; color: var(--warning); font-weight: 800; text-transform: uppercase; }
+        .multa-tag { font-size: 9px; position: absolute; bottom: -18px; color: var(--warning); font-weight: 800; text-transform: uppercase; }
 
-        /* LEYENDA CON CÍRCULOS MARCADOS */
         .legend { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 25px; font-size: 12px; font-weight: 600; padding: 15px; border-top: 1px dashed #cbd5e1; }
         .legend-item { display: flex; align-items: center; gap: 8px; justify-content: flex-start; padding-left: 10px; }
-        .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid transparent; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; }
         
         .warning-box { background: #fffbeb; border: 1px solid #fef3c7; color: #92400e; padding: 12px; border-radius: 10px; font-size: 12px; margin-top: 25px; line-height: 1.4; font-weight: 500; text-align: left; }
 
@@ -108,7 +113,7 @@
                     const contenedor = document.getElementById('contenedorPagos');
                     prestamo.pagos.forEach((pago, index) => {
                         const divWrap = document.createElement('div');
-                        divWrap.style.marginBottom = "18px";
+                        divWrap.style.marginBottom = "22px";
                         divWrap.style.display = "flex";
                         divWrap.style.flexDirection = "column";
                         divWrap.style.alignItems = "center";
@@ -126,7 +131,7 @@
                             divWrap.appendChild(label);
                         }
 
-                        // LÓGICA DE ESTADO (Marcado o X)
+                        // LÓGICA DE ESTADO (Pagado o X)
                         if (pago.estado === 1) div.classList.add('checked');
                         if (pago.estado === 2) div.classList.add('x-mark');
                         
@@ -144,7 +149,6 @@
                 document.body.innerHTML = "<h3>Error de conexión con la nube.</h3>";
             }
         }
-
         obtenerDatos();
     </script>
 </body>
