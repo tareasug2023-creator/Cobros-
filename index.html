@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Auditoría Real</title>
+    <title>Prestamos CC - Panel Cobro Detallado</title>
     <style>
         :root { 
             --primary: #1e40af; --success: #15803d; --danger: #b91c1c; --warning: #b45309; 
@@ -106,7 +106,7 @@
     </div>
 
     <div class="search-container">
-        <input type="text" id="busqueda" class="search-input" placeholder="🔍 Buscar cliente..." onkeyup="renderizarTabla()">
+        <input type="text" id="busqueda" class="search-input" placeholder="🔍 Buscar cliente por nombre..." onkeyup="renderizarTabla()">
     </div>
 
     <div class="stats-grid">
@@ -155,42 +155,24 @@
     let editandoID = null;
     let mesesColapsados = {};
 
-    // --- AUDITORÍA BASADA EN DINERO REAL COBRADO ---
     function auditoriaBase() {
         if (prompt("Clave:") !== CONTRASENA_ADMIN) return;
         const capitalInicialBase = 1000.00;
-        let capitalEnCalle = 0;
-        let interesesYMultasCobrados = 0;
-
+        let capitalEnCalle = 0; let interesesYMultasCobrados = 0;
         prestamos.forEach(p => {
             const cuotasTotales = p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales;
             const capPorCuota = p.montoOriginal / cuotasTotales;
-            
             const pagadas = p.pagos.filter(pag => pag.estado === 1 && pag.tipo !== 'extra').length;
-            const capitalYaDevuelto = pagadas * capPorCuota;
-            
-            // Capital que el cliente aún me debe
-            capitalEnCalle += (p.montoOriginal - capitalYaDevuelto);
-            
-            // Intereses reales cobrados (Círculos verdes)
+            capitalEnCalle += (p.montoOriginal - (pagadas * capPorCuota));
             p.pagos.forEach(pag => {
-                if(pag.estado === 1) {
-                    interesesYMultasCobrados += (pag.tipo === 'extra' ? 5 : (pag.valor - capPorCuota));
-                }
+                if(pag.estado === 1) interesesYMultasCobrados += (pag.tipo === 'extra' ? 5 : (pag.valor - capPorCuota));
             });
         });
-
-        // CAJA = Inicial - Lo que falta cobrar + Intereses ganados
         capitalTotal = capitalInicialBase - capitalEnCalle + interesesYMultasCobrados;
-        
         actualizarUI();
-        alert(`RESULTADO DE AUDITORÍA:\n\n` +
-              `Dinero prestado (en la calle): $${capitalEnCalle.toFixed(2)}\n` +
-              `Ganancias cobradas (bolsillo): $${interesesYMultasCobrados.toFixed(2)}\n\n` +
-              `SALDO FINAL QUE DEBES TENER: $${capitalTotal.toFixed(2)}`);
+        alert(`Auditoría:\nCalle: $${capitalEnCalle.toFixed(2)}\nGanancias: $${interesesYMultasCobrados.toFixed(2)}\n\nSaldo: $${capitalTotal.toFixed(2)}`);
     }
 
-    // REPORTE ESTILO EXCEL (PROYECTADO)
     function mostrarHistorialExcel() {
         let reporte = {};
         prestamos.forEach(p => {
@@ -202,9 +184,9 @@
             reporte[mId].prestado += p.montoOriginal;
             reporte[mId].ganancia += (gan + mul);
         });
-        let msg = "📊 REPORTE DE ORIGINACIÓN:\n\n";
+        let msg = "📊 REPORTE MENSUAL:\n\n";
         Object.keys(reporte).reverse().forEach(m => {
-            msg += `• ${m.toUpperCase()}:\n  - Prestado: $${reporte[m].prestado.toFixed(2)}\n  - Utilidad Proyectada: $${reporte[m].ganancia.toFixed(2)}\n\n`;
+            msg += `• ${m.toUpperCase()}:\n  - Prestado: $${reporte[m].prestado.toFixed(2)}\n  - Ganancia: $${reporte[m].ganancia.toFixed(2)}\n\n`;
         });
         alert(msg || "Sin datos.");
     }
@@ -284,11 +266,59 @@
         actualizarUI();
     }
 
-    function enviarRecordatorio(id, monto = null) {
+    // --- FUNCIÓN DE WHATSAPP MEJORADA (COBRO TOTAL) ---
+    function enviarRecordatorio(id) {
         const p = prestamos.find(x => x.id === id);
         const lectorLink = `https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
         let celFinal = p.celular; if (celFinal.startsWith('0')) celFinal = celFinal.substring(1);
-        let msg = monto ? `Hola ${p.nombre}, vence tu cuota de $${monto.toFixed(2)}. Revisa aqui: ${lectorLink}` : `Hola ${p.nombre}, estado actualizado: ${lectorLink}`;
+
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+
+        let totalHoy = 0;
+        let totalAtrasado = 0;
+        let totalMultas = 0;
+        let cuotasAtrasadasCount = 0;
+
+        p.pagos.forEach((pago, i) => {
+            if (pago.estado !== 1) {
+                let fP = new Date(p.fechaInicio + "T00:00:00");
+                if (p.modalidad === 'quincenal') fP.setDate(fP.getDate() + (i === 0 ? 15 : 30));
+                else fP.setDate(fP.getDate() + ((i + 1) * 7));
+                fP.setHours(0,0,0,0);
+
+                if (pago.tipo === 'extra') {
+                    totalMultas += pago.valor;
+                } else {
+                    if (fP.getTime() === hoy.getTime()) {
+                        totalHoy += pago.valor;
+                    } else if (fP.getTime() < hoy.getTime()) {
+                        totalAtrasado += pago.valor;
+                        cuotasAtrasadasCount++;
+                    }
+                }
+            }
+        });
+
+        const deudaTotal = totalHoy + totalAtrasado + totalMultas;
+
+        let msg = `Hola *${p.nombre}*, te saludamos de *Prestamos CC*.\n\n`;
+        
+        if (totalHoy > 0) {
+            msg += `📌 Hoy vence tu cuota de *$${totalHoy.toFixed(2)}*.\n`;
+        }
+        
+        if (totalAtrasado > 0) {
+            msg += `⚠️ Presentas *${cuotasAtrasadasCount} cuota(s) atrasada(s)* por un total de *$${totalAtrasado.toFixed(2)}*.\n`;
+        }
+
+        if (totalMultas > 0) {
+            msg += `❗ Tienes multas pendientes por un total de *$${totalMultas.toFixed(2)}*.\n`;
+        }
+
+        msg += `\n💵 *TOTAL A CANCELAR: $${deudaTotal.toFixed(2)}*\n\n`;
+        msg += `Puedes revisar el detalle aqui: ${lectorLink}`;
+
         window.open(`https://api.whatsapp.com/send?phone=593${celFinal}&text=${encodeURIComponent(msg)}`, '_blank');
     }
 
@@ -389,7 +419,7 @@
                     else fP.setDate(fP.getDate() + ((i + 1) * 7));
                     if (fP.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'}) === hoy) {
                         hoyCount++;
-                        list.innerHTML += `<div class="notif-item"><span>👤 <b>${p.nombre}</b> ($${pago.valor.toFixed(2)})</span><button class="btn-send-notif" onclick="enviarRecordatorio(${p.id}, ${pago.valor})">📲 COBRAR</button></div>`;
+                        list.innerHTML += `<div class="notif-item"><span>👤 <b>${p.nombre}</b> ($${pago.valor.toFixed(2)})</span><button class="btn-send-notif" onclick="enviarRecordatorio(${p.id})">📲 COBRAR</button></div>`;
                     }
                 }
             });
@@ -412,23 +442,27 @@
                 tbody.appendChild(trM); ultimoMes = mesId;
             }
             if (mesesColapsados[mesId]) return;
-            const pHechos = p.pagos.filter(pag => pag.estado === 1).length;
-            const porcentaje = (pHechos / p.pagos.length) * 100;
+            const porc = (p.pagos.filter(pag => pag.estado === 1).length / p.pagos.length) * 100;
             const tr = document.createElement('tr');
             let circs = '<div class="payment-scroll">';
             p.pagos.forEach((pago, i) => {
                 let fP = new Date(p.fechaInicio + "T00:00:00");
                 if (p.modalidad === 'quincenal') fP.setDate(fP.getDate() + (i === 0 ? 15 : 30));
                 else fP.setDate(fP.getDate() + ((i + 1) * 7));
-                circs += `<div style="text-align:center; min-width:45px;"><div class="circle ${pago.estado===1?'checked':(pago.estado===2?'x-mark':'')} ${pago.tipo==='extra'?'extra-fee':''}" onclick="togglePago(${p.id}, ${i})">${i + 1}</div><span class="date-label">${fP.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}</span></div>`;
+                circs += `<div style="text-align:center; min-width:45px;"><div class="circle ${pago.estado===1?'checked':(pago.estado===2?'x-mark':'')} ${pago.tipo==='extra'?'extra-fee':''}" onclick="togglePago(${p.id},${i})">${i+1}</div><span class="date-label">${fP.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}</span></div>`;
             });
             circs += `<div class="circle add-week" onclick="agregarMulta(${p.id})">+</div></div>`;
 
             let linkL = `https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
             tr.innerHTML = `<td><strong>${p.nombre}</strong> <span class="badge ${p.modalidad==='quincenal'?'badge-quincenal':'badge-semanal'}">${p.modalidad}</span><br><span class="start-date-label">📅 ${p.fechaInicio}</span></td>
-            <td><div class="progress-container"><div class="progress-bar" style="width:${porcentaje}%"></div></div><div>Cuota: <span class="cuota-highlight">$${p.valorCuotaOriginal.toFixed(2)}</span></div><div style="font-size:11px; margin-top:2px;">Deuda: $${p.totalCobrar.toFixed(2)}</div></td>
+            <td><div class="progress-container"><div class="progress-bar" style="width:${porc}%"></div></div><div>Cuota: <span class="cuota-highlight">$${p.valorCuotaOriginal.toFixed(2)}</span></div><div style="font-size:11px; margin-top:2px;">Deuda: $${p.totalCobrar.toFixed(2)}</div></td>
             <td>${circs}</td>
-            <td><div style="display:flex; gap:5px;"><button class="btn-action" onclick="prepararEdicion(${p.id})" title="Editar">✏️</button><button class="btn-action" onclick="enviarRecordatorio(${p.id})" title="WhatsApp">📞</button><button class="btn-action" onclick="navigator.clipboard.writeText('${linkL}').then(()=>alert('Copiado'))" title="Copiado">🔗</button><button class="btn-action" onclick="menuEliminar(${p.id})" title="Borrar">🗑️</button></div></td>`;
+            <td><div style="display:flex; gap:5px;">
+                <button class="btn-action" onclick="prepararEdicion(${p.id})" title="Editar">✏️</button>
+                <button class="btn-action" onclick="enviarRecordatorio(${p.id})" title="WhatsApp">📞</button>
+                <button class="btn-action" onclick="navigator.clipboard.writeText('${linkL}').then(()=>alert('Copiado'))" title="Copiado">🔗</button>
+                <button class="btn-action" onclick="menuEliminar(${p.id})" title="Borrar">🗑️</button>
+            </div></td>`;
             tbody.appendChild(tr);
         });
     }
@@ -443,16 +477,13 @@
         prestamos.forEach(p => {
             const nCuotas = p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales;
             const capPorCuota = p.montoOriginal / nCuotas;
-
             p.pagos.forEach((pag, i) => {
                 if (pag.estado === 1) {
                     let g = (pag.tipo === 'extra' ? 5 : (pag.valor - capPorCuota));
                     totalReal += g;
-                    
                     let fP = new Date(p.fechaInicio + "T00:00:00");
                     if (p.modalidad === 'quincenal') fP.setDate(fP.getDate() + (i === 0 ? 15 : 30));
                     else fP.setDate(fP.getDate() + ((i + 1) * 7));
-                    
                     if (fP.getMonth() === ahora.getMonth() && fP.getFullYear() === ahora.getFullYear()) mesValReal += g;
                 }
             });
