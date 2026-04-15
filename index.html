@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Panel Premium Total</title>
+    <title>Prestamos CC - Auditoría Real</title>
     <style>
         :root { 
             --primary: #1e40af; --success: #15803d; --danger: #b91c1c; --warning: #b45309; 
@@ -20,7 +20,7 @@
         .container { max-width: 1300px; margin: auto; background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); border: 1px solid var(--border); }
         .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary); padding-bottom: 20px; margin-bottom: 20px; }
         
-        .theme-toggle { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .theme-toggle { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; z-index: 1000; }
 
         .capital-section { background: var(--header-bg); color: white; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--primary); }
         .capital-section input { background: transparent; color: #4ade80; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
@@ -87,16 +87,16 @@
     <div class="header-box">
         <h2 style="color: var(--primary)">💲 Prestamos CC</h2>
         <div class="capital-section">
-            CAPITAL DISPONIBLE<br>
+            SALDO REAL EN CAJA<br>
             $ <input type="number" id="capitalGlobal" step="0.01" value="0.00" readonly>
-            <span style="display:block; cursor:pointer; text-decoration:underline; font-size:11px; color:#60a5fa;" onclick="ajustarCapitalConClave()">Ajustar Manual</span>
+            <span style="display:block; cursor:pointer; text-decoration:underline; font-size:11px; color:#60a5fa;" onclick="ajustarCapitalConClave()">Ajustar Manualmente</span>
         </div>
     </div>
 
     <div class="tools-box">
         <span style="font-weight: 800; font-size: 13px;">⚙️ CONTABILIDAD:</span>
-        <button class="btn-tool btn-audit" onclick="auditoriaBase()">📊 Auditoría Base $1000</button>
-        <button class="btn-tool btn-history" onclick="mostrarHistorialExcel()">💰 Intereses Mensuales (Estilo Excel)</button>
+        <button class="btn-tool btn-audit" onclick="auditoriaBase()">📊 Auditoría (Cuadre de Efectivo)</button>
+        <button class="btn-tool btn-history" onclick="mostrarHistorialExcel()">💰 Intereses Mensuales (Excel)</button>
         <button class="btn-tool" style="background:#0f172a;" onclick="window.print()">🖨️ Reporte Imprimible</button>
     </div>
 
@@ -106,12 +106,12 @@
     </div>
 
     <div class="search-container">
-        <input type="text" id="busqueda" class="search-input" placeholder="🔍 Buscar cliente por nombre..." onkeyup="renderizarTabla()">
+        <input type="text" id="busqueda" class="search-input" placeholder="🔍 Buscar cliente..." onkeyup="renderizarTabla()">
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card"><h4>Interés Total Generado</h4><p id="gananciaTotal">$ 0.00</p></div>
-        <div class="stat-card"><h4>Interés Este Mes</h4><p id="gananciaMes">$ 0.00</p></div>
+        <div class="stat-card"><h4>Interés Cobrado Total</h4><p id="gananciaTotal">$ 0.00</p></div>
+        <div class="stat-card"><h4>Interés Cobrado Mes</h4><p id="gananciaMes">$ 0.00</p></div>
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
@@ -155,36 +155,58 @@
     let editandoID = null;
     let mesesColapsados = {};
 
+    // --- AUDITORÍA BASADA EN DINERO REAL COBRADO ---
+    function auditoriaBase() {
+        if (prompt("Clave:") !== CONTRASENA_ADMIN) return;
+        const capitalInicialBase = 1000.00;
+        let capitalEnCalle = 0;
+        let interesesYMultasCobrados = 0;
+
+        prestamos.forEach(p => {
+            const cuotasTotales = p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales;
+            const capPorCuota = p.montoOriginal / cuotasTotales;
+            
+            const pagadas = p.pagos.filter(pag => pag.estado === 1 && pag.tipo !== 'extra').length;
+            const capitalYaDevuelto = pagadas * capPorCuota;
+            
+            // Capital que el cliente aún me debe
+            capitalEnCalle += (p.montoOriginal - capitalYaDevuelto);
+            
+            // Intereses reales cobrados (Círculos verdes)
+            p.pagos.forEach(pag => {
+                if(pag.estado === 1) {
+                    interesesYMultasCobrados += (pag.tipo === 'extra' ? 5 : (pag.valor - capPorCuota));
+                }
+            });
+        });
+
+        // CAJA = Inicial - Lo que falta cobrar + Intereses ganados
+        capitalTotal = capitalInicialBase - capitalEnCalle + interesesYMultasCobrados;
+        
+        actualizarUI();
+        alert(`RESULTADO DE AUDITORÍA:\n\n` +
+              `Dinero prestado (en la calle): $${capitalEnCalle.toFixed(2)}\n` +
+              `Ganancias cobradas (bolsillo): $${interesesYMultasCobrados.toFixed(2)}\n\n` +
+              `SALDO FINAL QUE DEBES TENER: $${capitalTotal.toFixed(2)}`);
+    }
+
+    // REPORTE ESTILO EXCEL (PROYECTADO)
     function mostrarHistorialExcel() {
         let reporte = {};
         prestamos.forEach(p => {
-            const fechaObj = new Date(p.fechaInicio + "T00:00:00");
-            const mesAño = fechaObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-            const gananciaInteres = p.montoOriginal * (p.porcentajeOriginal / 100);
-            const totalMultas = p.pagos.filter(pag => pag.tipo === 'extra' && pag.estado === 1).length * 5;
-            if (!reporte[mesAño]) reporte[mesAño] = { capitalPrestato: 0, ganancia: 0 };
-            reporte[mesAño].capitalPrestato += p.montoOriginal;
-            reporte[mesAño].ganancia += (gananciaInteres + totalMultas);
+            const fO = new Date(p.fechaInicio + "T00:00:00");
+            const mId = fO.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            const gan = p.montoOriginal * (p.porcentajeOriginal / 100);
+            const mul = p.pagos.filter(pag => pag.tipo === 'extra' && pag.estado === 1).length * 5;
+            if (!reporte[mId]) reporte[mId] = { prestado: 0, ganancia: 0 };
+            reporte[mId].prestado += p.montoOriginal;
+            reporte[mId].ganancia += (gan + mul);
         });
-        let msg = "📊 REPORTE MENSUAL (ESTILO EXCEL):\n\n";
+        let msg = "📊 REPORTE DE ORIGINACIÓN:\n\n";
         Object.keys(reporte).reverse().forEach(m => {
-            msg += `• ${m.toUpperCase()}:\n  - Prestado: $${reporte[m].capitalPrestato.toFixed(2)}\n  - Ganancia: $${reporte[m].ganancia.toFixed(2)}\n\n`;
+            msg += `• ${m.toUpperCase()}:\n  - Prestado: $${reporte[m].prestado.toFixed(2)}\n  - Utilidad Proyectada: $${reporte[m].ganancia.toFixed(2)}\n\n`;
         });
-        alert(msg || "No hay datos.");
-    }
-
-    function auditoriaBase() {
-        if (prompt("Clave:") !== CONTRASENA_ADMIN) return;
-        const base = 1000.00;
-        let pVigente = 0; let cRecuperado = 0;
-        prestamos.forEach(p => {
-            pVigente += p.montoOriginal;
-            const pagadas = p.pagos.filter(pag => pag.estado === 1 && pag.tipo !== 'extra').length;
-            cRecuperado += (pagadas * (p.montoOriginal / (p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales)));
-        });
-        capitalTotal = base - pVigente + cRecuperado;
-        actualizarUI();
-        alert(`Auditoría:\nEn Caja: $${capitalTotal.toFixed(2)}\nEn la calle: $${pVigente.toFixed(2)}`);
+        alert(msg || "Sin datos.");
     }
 
     function cambiarModalidad() {
@@ -211,7 +233,7 @@
 
     function ajustarCapitalConClave() {
         if (prompt("Clave:") === CONTRASENA_ADMIN) {
-            const n = prompt("Nuevo capital:", capitalTotal.toFixed(2));
+            const n = prompt("Manual:", capitalTotal.toFixed(2));
             if (n) { capitalTotal = parseFloat(n); actualizarUI(); }
         }
     }
@@ -232,7 +254,7 @@
                 prestamos = data.prestamos || [];
                 capitalTotal = parseFloat(data.capital) || 0;
                 actualizarUI();
-                if(!silencioso) alert("✅ Cargado.");
+                if(!silencioso) alert("✅ Sincronizado.");
             }
         } catch (e) { if(!silencioso) alert("❌ Error."); }
     }
@@ -262,11 +284,12 @@
         actualizarUI();
     }
 
-    function enviarRecordatorio(id, monto) {
+    function enviarRecordatorio(id, monto = null) {
         const p = prestamos.find(x => x.id === id);
-        let cel = p.celular; if (cel.startsWith('0')) cel = cel.substring(1);
-        const msg = `Hola ${p.nombre}, vence cuota de $${monto.toFixed(2)}. Revisa aqui: https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
-        window.open(`https://api.whatsapp.com/send?phone=593${cel}&text=${encodeURIComponent(msg)}`, '_blank');
+        const lectorLink = `https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
+        let celFinal = p.celular; if (celFinal.startsWith('0')) celFinal = celFinal.substring(1);
+        let msg = monto ? `Hola ${p.nombre}, vence tu cuota de $${monto.toFixed(2)}. Revisa aqui: ${lectorLink}` : `Hola ${p.nombre}, estado actualizado: ${lectorLink}`;
+        window.open(`https://api.whatsapp.com/send?phone=593${celFinal}&text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function prepararEdicion(id) {
@@ -299,7 +322,7 @@
         const nC = (p.modalidad === 'quincenal') ? 2 : p.numSemanasOriginales;
         p.totalCobrar = nT; p.valorCuotaOriginal = nT / nC;
         p.pagos = Array.from({length: nC}, () => ({ tipo: 'normal', estado: 0, valor: nT / nC }));
-        editandoID = null; document.getElementById('btnRegistrar').innerText = "Registrar Préstamo";
+        editandoID = null; document.getElementById('btnRegistrar').innerText = "Registrar";
         actualizarUI();
     }
 
@@ -339,7 +362,8 @@
     function agregarMulta(pId) {
         if (prompt("Clave multa ($5):") === CONTRASENA_ADMIN) {
             const p = prestamos.find(x => x.id === pId);
-            p.totalCobrar += 5; p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
+            p.totalCobrar += 5;
+            p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
             actualizarUI();
         }
     }
@@ -388,22 +412,23 @@
                 tbody.appendChild(trM); ultimoMes = mesId;
             }
             if (mesesColapsados[mesId]) return;
-            const porc = (p.pagos.filter(pag => pag.estado === 1).length / p.pagos.length) * 100;
+            const pHechos = p.pagos.filter(pag => pag.estado === 1).length;
+            const porcentaje = (pHechos / p.pagos.length) * 100;
             const tr = document.createElement('tr');
             let circs = '<div class="payment-scroll">';
             p.pagos.forEach((pago, i) => {
                 let fP = new Date(p.fechaInicio + "T00:00:00");
                 if (p.modalidad === 'quincenal') fP.setDate(fP.getDate() + (i === 0 ? 15 : 30));
                 else fP.setDate(fP.getDate() + ((i + 1) * 7));
-                circs += `<div style="text-align:center; min-width:45px;"><div class="circle ${pago.estado===1?'checked':(pago.estado===2?'x-mark':'')} ${pago.tipo==='extra'?'extra-fee':''}" onclick="togglePago(${p.id},${i})">${i+1}</div><span class="date-label">${fP.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}</span></div>`;
+                circs += `<div style="text-align:center; min-width:45px;"><div class="circle ${pago.estado===1?'checked':(pago.estado===2?'x-mark':'')} ${pago.tipo==='extra'?'extra-fee':''}" onclick="togglePago(${p.id}, ${i})">${i + 1}</div><span class="date-label">${fP.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}</span></div>`;
             });
             circs += `<div class="circle add-week" onclick="agregarMulta(${p.id})">+</div></div>`;
 
             let linkL = `https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
             tr.innerHTML = `<td><strong>${p.nombre}</strong> <span class="badge ${p.modalidad==='quincenal'?'badge-quincenal':'badge-semanal'}">${p.modalidad}</span><br><span class="start-date-label">📅 ${p.fechaInicio}</span></td>
-            <td><div class="progress-container"><div class="progress-bar" style="width:${porc}%"></div></div><div>Cuota: <span class="cuota-highlight">$${p.valorCuotaOriginal.toFixed(2)}</span></div><div style="font-size:11px; margin-top:2px;">Deuda: $${p.totalCobrar.toFixed(2)}</div></td>
+            <td><div class="progress-container"><div class="progress-bar" style="width:${porcentaje}%"></div></div><div>Cuota: <span class="cuota-highlight">$${p.valorCuotaOriginal.toFixed(2)}</span></div><div style="font-size:11px; margin-top:2px;">Deuda: $${p.totalCobrar.toFixed(2)}</div></td>
             <td>${circs}</td>
-            <td><div style="display:flex; gap:5px;"><button class="btn-action" onclick="prepararEdicion(${p.id})">✏️</button><button class="btn-action" onclick="navigator.clipboard.writeText('${linkL}').then(()=>alert('Copiado'))">🔗</button><button class="btn-action" onclick="menuEliminar(${p.id})">🗑️</button></div></td>`;
+            <td><div style="display:flex; gap:5px;"><button class="btn-action" onclick="prepararEdicion(${p.id})" title="Editar">✏️</button><button class="btn-action" onclick="enviarRecordatorio(${p.id})" title="WhatsApp">📞</button><button class="btn-action" onclick="navigator.clipboard.writeText('${linkL}').then(()=>alert('Copiado'))" title="Copiado">🔗</button><button class="btn-action" onclick="menuEliminar(${p.id})" title="Borrar">🗑️</button></div></td>`;
             tbody.appendChild(tr);
         });
     }
@@ -414,16 +439,26 @@
     }
 
     function calcularGanancias() {
-        let total = 0; let mesVal = 0; const ahora = new Date();
+        let totalReal = 0; let mesValReal = 0; const ahora = new Date();
         prestamos.forEach(p => {
-            const gan = p.montoOriginal * (p.porcentajeOriginal / 100);
-            const mul = p.pagos.filter(pag => pag.tipo === 'extra' && pag.estado === 1).length * 5;
-            total += (gan + mul);
-            const fP = new Date(p.fechaInicio + "T00:00:00");
-            if (fP.getMonth() === ahora.getMonth() && fP.getFullYear() === ahora.getFullYear()) mesVal += (gan + mul);
+            const nCuotas = p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales;
+            const capPorCuota = p.montoOriginal / nCuotas;
+
+            p.pagos.forEach((pag, i) => {
+                if (pag.estado === 1) {
+                    let g = (pag.tipo === 'extra' ? 5 : (pag.valor - capPorCuota));
+                    totalReal += g;
+                    
+                    let fP = new Date(p.fechaInicio + "T00:00:00");
+                    if (p.modalidad === 'quincenal') fP.setDate(fP.getDate() + (i === 0 ? 15 : 30));
+                    else fP.setDate(fP.getDate() + ((i + 1) * 7));
+                    
+                    if (fP.getMonth() === ahora.getMonth() && fP.getFullYear() === ahora.getFullYear()) mesValReal += g;
+                }
+            });
         });
-        document.getElementById('gananciaTotal').innerText = `$ ${total.toFixed(2)}`;
-        document.getElementById('gananciaMes').innerText = `$ ${mesVal.toFixed(2)}`;
+        document.getElementById('gananciaTotal').innerText = `$ ${totalReal.toFixed(2)}`;
+        document.getElementById('gananciaMes').innerText = `$ ${mesValReal.toFixed(2)}`;
     }
 
     window.onload = () => cargarDeNube(true);
