@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestamos CC - Panel Cobro Detallado</title>
+    <title>Prestamos CC - Auditoría y Reportes</title>
     <style>
         :root { 
             --primary: #1e40af; --success: #15803d; --danger: #b91c1c; --warning: #b45309; 
@@ -89,14 +89,14 @@
         <div class="capital-section">
             SALDO REAL EN CAJA<br>
             $ <input type="number" id="capitalGlobal" step="0.01" value="0.00" readonly>
-            <span style="display:block; cursor:pointer; text-decoration:underline; font-size:11px; color:#60a5fa;" onclick="ajustarCapitalConClave()">Ajustar Manualmente</span>
+            <span style="display:block; cursor:pointer; text-decoration:underline; font-size:11px; color:#60a5fa;" onclick="ajustarCapitalConClave()">Ajustar</span>
         </div>
     </div>
 
     <div class="tools-box">
-        <span style="font-weight: 800; font-size: 13px;">⚙️ CONTABILIDAD:</span>
-        <button class="btn-tool btn-audit" onclick="auditoriaBase()">📊 Auditoría (Cuadre de Efectivo)</button>
-        <button class="btn-tool btn-history" onclick="mostrarHistorialExcel()">💰 Intereses Mensuales (Excel)</button>
+        <span style="font-weight: 800; font-size: 13px;">⚙️ Herramientas:</span>
+        <button class="btn-tool btn-audit" onclick="auditoriaBase()">📊 Auditoría</button>
+        <button class="btn-tool btn-history" onclick="generarPaginaReporte()">💰 Intereses Mensuales</button>
         <button class="btn-tool" style="background:#0f172a;" onclick="window.print()">🖨️ Reporte Imprimible</button>
     </div>
 
@@ -106,7 +106,7 @@
     </div>
 
     <div class="search-container">
-        <input type="text" id="busqueda" class="search-input" placeholder="🔍 Buscar cliente por nombre..." onkeyup="renderizarTabla()">
+        <input type="text" id="busqueda" class="search-input" placeholder="🔍 Buscar cliente..." onkeyup="renderizarTabla()">
     </div>
 
     <div class="stats-grid">
@@ -155,6 +155,97 @@
     let editandoID = null;
     let mesesColapsados = {};
 
+    // --- NUEVA FUNCIÓN: GENERAR REPORTE EN PESTAÑA NUEVA ---
+    function generarPaginaReporte() {
+        if (prestamos.length === 0) { alert("No hay datos para reportar."); return; }
+
+        let reporte = {};
+        prestamos.forEach(p => {
+            const fO = new Date(p.fechaInicio + "T00:00:00");
+            const mId = fO.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            
+            const nCuotas = p.modalidad === 'quincenal' ? 2 : p.numSemanasOriginales;
+            const capPorCuota = p.montoOriginal / nCuotas;
+            
+            let gananciaProyectada = p.montoOriginal * (p.porcentajeOriginal / 100);
+            let multasCobradas = p.pagos.filter(pag => pag.tipo === 'extra' && pag.estado === 1).length * 5;
+            
+            if (!reporte[mId]) reporte[mId] = { prestado: 0, ganancia: 0, detalle: [] };
+            
+            reporte[mId].prestado += p.montoOriginal;
+            reporte[mId].ganancia += (gananciaProyectada + multasCobradas);
+            reporte[mId].detalle.push({
+                nombre: p.nombre,
+                monto: p.montoOriginal,
+                utilidad: gananciaProyectada + multasCobradas,
+                fecha: p.fechaInicio
+            });
+        });
+
+        const nuevaVentana = window.open("", "_blank");
+        let htmlContent = `
+        <html>
+        <head>
+            <title>Reporte Mensual Detallado - Prestamos CC</title>
+            <style>
+                body { font-family: sans-serif; padding: 40px; background: #f8fafc; color: #1e293b; }
+                h1 { color: #1e40af; border-bottom: 3px solid #1e40af; padding-bottom: 10px; }
+                .mes-bloque { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 30px; }
+                h2 { text-transform: uppercase; color: #15803d; font-size: 1.2em; border-left: 5px solid #15803d; padding-left: 10px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                th { background: #f1f5f9; padding: 12px; text-align: left; border-bottom: 2px solid #cbd5e1; }
+                td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+                .resumen-footer { background: #1e293b; color: white; font-weight: bold; margin-top: 10px; }
+                .btn-print { background: #1e40af; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
+                @media print { .btn-print { display: none; } }
+            </style>
+        </head>
+        <body>
+            <button class="btn-print" onclick="window.print()">🖨️ Imprimir o Guardar PDF</button>
+            <h1>📊 Reporte Histórico de Originación</h1>
+        `;
+
+        Object.keys(reporte).reverse().forEach(m => {
+            htmlContent += `
+            <div class="mes-bloque">
+                <h2>🗓️ ${m}</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Cliente</th>
+                            <th>Monto Prestado</th>
+                            <th>Utilidad Proyectada (+Multas)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            reporte[m].detalle.forEach(d => {
+                htmlContent += `
+                <tr>
+                    <td>${d.fecha}</td>
+                    <td>${d.nombre}</td>
+                    <td>$${d.monto.toFixed(2)}</td>
+                    <td>$${d.utilidad.toFixed(2)}</td>
+                </tr>`;
+            });
+
+            htmlContent += `
+                    <tr class="resumen-footer">
+                        <td colspan="2" style="text-align:right">TOTALES DEL MES:</td>
+                        <td>$${reporte[m].prestado.toFixed(2)}</td>
+                        <td>$${reporte[m].ganancia.toFixed(2)}</td>
+                    </tr>
+                </tbody>
+                </table>
+            </div>`;
+        });
+
+        htmlContent += `</body></html>`;
+        nuevaVentana.document.write(htmlContent);
+    }
+
+    // --- RESTO DE FUNCIONES (Auditoría, WhatsApp, etc.) ---
     function auditoriaBase() {
         if (prompt("Clave:") !== CONTRASENA_ADMIN) return;
         const capitalInicialBase = 1000.00;
@@ -171,24 +262,6 @@
         capitalTotal = capitalInicialBase - capitalEnCalle + interesesYMultasCobrados;
         actualizarUI();
         alert(`Auditoría:\nCalle: $${capitalEnCalle.toFixed(2)}\nGanancias: $${interesesYMultasCobrados.toFixed(2)}\n\nSaldo: $${capitalTotal.toFixed(2)}`);
-    }
-
-    function mostrarHistorialExcel() {
-        let reporte = {};
-        prestamos.forEach(p => {
-            const fO = new Date(p.fechaInicio + "T00:00:00");
-            const mId = fO.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-            const gan = p.montoOriginal * (p.porcentajeOriginal / 100);
-            const mul = p.pagos.filter(pag => pag.tipo === 'extra' && pag.estado === 1).length * 5;
-            if (!reporte[mId]) reporte[mId] = { prestado: 0, ganancia: 0 };
-            reporte[mId].prestado += p.montoOriginal;
-            reporte[mId].ganancia += (gan + mul);
-        });
-        let msg = "📊 REPORTE MENSUAL:\n\n";
-        Object.keys(reporte).reverse().forEach(m => {
-            msg += `• ${m.toUpperCase()}:\n  - Prestado: $${reporte[m].prestado.toFixed(2)}\n  - Ganancia: $${reporte[m].ganancia.toFixed(2)}\n\n`;
-        });
-        alert(msg || "Sin datos.");
     }
 
     function cambiarModalidad() {
@@ -266,7 +339,6 @@
         actualizarUI();
     }
 
-    // --- FUNCIÓN DE WHATSAPP MEJORADA (COBRO TOTAL) ---
     function enviarRecordatorio(id) {
         const p = prestamos.find(x => x.id === id);
         const lectorLink = `https://tareasug2023-creator.github.io/Cobros-/lector.html?id=${p.id}`;
@@ -275,10 +347,7 @@
         const hoy = new Date();
         hoy.setHours(0,0,0,0);
 
-        let totalHoy = 0;
-        let totalAtrasado = 0;
-        let totalMultas = 0;
-        let cuotasAtrasadasCount = 0;
+        let totalHoy = 0; let totalAtrasado = 0; let totalMultas = 0; let cuotasAtrasadasCount = 0;
 
         p.pagos.forEach((pago, i) => {
             if (pago.estado !== 1) {
@@ -290,35 +359,19 @@
                 if (pago.tipo === 'extra') {
                     totalMultas += pago.valor;
                 } else {
-                    if (fP.getTime() === hoy.getTime()) {
-                        totalHoy += pago.valor;
-                    } else if (fP.getTime() < hoy.getTime()) {
-                        totalAtrasado += pago.valor;
-                        cuotasAtrasadasCount++;
-                    }
+                    if (fP.getTime() === hoy.getTime()) totalHoy += pago.valor;
+                    else if (fP.getTime() < hoy.getTime()) { totalAtrasado += pago.valor; cuotasAtrasadasCount++; }
                 }
             }
         });
 
         const deudaTotal = totalHoy + totalAtrasado + totalMultas;
-
         let msg = `Hola *${p.nombre}*, te saludamos de *Prestamos CC*.\n\n`;
-        
-        if (totalHoy > 0) {
-            msg += `📌 Hoy vence tu cuota de *$${totalHoy.toFixed(2)}*.\n`;
-        }
-        
-        if (totalAtrasado > 0) {
-            msg += `⚠️ Presentas *${cuotasAtrasadasCount} cuota(s) atrasada(s)* por un total de *$${totalAtrasado.toFixed(2)}*.\n`;
-        }
-
-        if (totalMultas > 0) {
-            msg += `❗ Tienes multas pendientes por un total de *$${totalMultas.toFixed(2)}*.\n`;
-        }
-
+        if (totalHoy > 0) msg += `📌 Hoy vence tu cuota de *$${totalHoy.toFixed(2)}*.\n`;
+        if (totalAtrasado > 0) msg += `⚠️ Presentas *${cuotasAtrasadasCount} cuota(s) atrasada(s)* por un total de *$${totalAtrasado.toFixed(2)}*.\n`;
+        if (totalMultas > 0) msg += `❗ Tienes multas pendientes por un total de *$${totalMultas.toFixed(2)}*.\n`;
         msg += `\n💵 *TOTAL A CANCELAR: $${deudaTotal.toFixed(2)}*\n\n`;
         msg += `Puedes revisar el detalle aqui: ${lectorLink}`;
-
         window.open(`https://api.whatsapp.com/send?phone=593${celFinal}&text=${encodeURIComponent(msg)}`, '_blank');
     }
 
